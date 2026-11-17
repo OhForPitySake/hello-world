@@ -1,0 +1,35 @@
+import re
+
+SCOTTISH_POSTCODE_AREAS = {
+    "AB", "DD", "DG", "EH", "FK", "G", "HS", "IV",
+    "KA", "KW", "KY", "ML", "PA", "PH", "TD", "ZE",
+}
+
+AREA_REGEX = re.compile(r"^\s*([A-Za-z]{1,2})(?=\d)")
+
+
+def extract_postcode_area(postcode: str) -> str | None:
+    if not isinstance(postcode, str):
+        return None
+    match = AREA_REGEX.match(postcode)
+    return match.group(1).upper() if match else None
+
+
+def is_scottish_postcode(postcode: str) -> bool:
+    return extract_postcode_area(postcode) in SCOTTISH_POSTCODE_AREAS
+
+
+# Examples
+samples = ["EH12 9AB", "g11aa", "  ab10 1xg ", "SW1A 1AA", "ABERDEEN", None]
+for pc in samples:
+    print(f"{pc!r:12} -> area={extract_postcode_area(pc)!r:6} | scotland={is_scottish_postcode(pc)}")
+
+
+df["postcode_area"] = (
+    df["postcode"]
+    .str.strip()
+    .str.extract(r"^([A-Za-z]{1,2})(?=\d)", expand=False)
+    .str.upper()
+)
+
+df["is_scotland"] = df["postcode_area"].isin(SCOTTISH_POSTCODE_AREAS)
