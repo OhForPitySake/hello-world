@@ -1,0 +1,402 @@
+"""
+Load raw Domestic and Non-Domestic EPC records into separate DuckDB tables
+under the `epc_bronze` schema, keeping embedded dicts and lists as-is (JSON).
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Any, Sequence
+import duckdb
+
+
+def load_domestic_to_duckdb(
+    records: dict[str, Any] | Sequence[dict[str, Any]],
+    duckdb_file: str | Path = "epc_data.duckdb",
+    table_name: str = "domestic_certificates",
+    schema_name: str = "epc_bronze",
+    *,
+    cert_type_column: str = "cert_type",
+    location: str = "England and Wales",
+    primary_key: str | None = None,
+) -> int:
+    """
+    Load/upsert raw domestic ('dom') EPC records into `epc_bronze.<table_name>` in DuckDB.
+    Keeps all fields and loads embedded dictionaries and lists as-is (JSON) without expanding them.
+    """
+    for ident_name, ident_val in (
+        ("schema_name", schema_name),
+        ("table_name", table_name),
+        ("cert_type_column", cert_type_column),
+    ):
+        if not ident_val or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", ident_val):
+            raise ValueError(
+                f"Invalid {ident_name} '{ident_val}'. Use only letters, numbers, and underscores, "
+                "starting with a letter or underscore."
+            )
+
+    if isinstance(records, dict):
+        row_list = [records]
+    elif isinstance(records, Sequence):
+        row_list = [r for r in records if isinstance(r, dict)]
+    else:
+        raise TypeError("records must be a dict or a sequence of dicts.")
+
+    if not row_list:
+        return 0
+
+    pk_col = primary_key
+    if pk_col is None:
+        for candidate in ("certificate_number", "certificateNumber", "rrn", "assessment_id"):
+            if any(candidate in r and r[candidate] not in (None, "") for r in row_list):
+                pk_col = candidate
+                break
+
+    columns: list[str] = []
+    seen_cols: set[str] = set()
+    if pk_col:
+        columns.append(pk_col)
+        seen_cols.add(pk_col)
+
+    for r in row_list:
+        for k in r.keys():
+            if k not in seen_cols and k not in (cert_type_column, "location"):
+                columns.append(k)
+                seen_cols.add(k)
+
+    for extra_col in (cert_type_column, "location"):
+        if extra_col not in seen_cols:
+            columns.append(extra_col)
+            seen_cols.add(extra_col)
+
+    if pk_col:
+        deduped_map: dict[str, dict[str, Any]] = {}
+        for r in row_list:
+            pk_val = r.get(pk_col)
+            if pk_val is None or str(pk_val).strip() == "":
+                continue
+            deduped_map[str(pk_val).strip()] = r
+        clean_records = list(deduped_map.values())
+    else:
+        clean_records = row_list
+
+    if not clean_records:
+        return 0
+
+    col_types: dict[str, str | None] = {}
+    for col in columns:
+        if col == pk_col or col in (cert_type_column, "location"):
+            col_types[col] = "VARCHAR"
+            continue
+        has_json = has_bool = has_float = has_int = has_str = False
+        for r in clean_records:
+            val = r.get(col)
+            if val is None:
+                continue
+            if isinstance(val, (dict, list)):
+                has_json = True
+            elif isinstance(val, bool):
+                has_bool = True
+            elif isinstance(val, int):
+                has_int = True
+            elif isinstance(val, float):
+                has_float = True
+            else:
+                has_str = True
+
+        if has_json:
+            col_types[col] = "JSON"
+        elif has_str:
+            col_types[col] = "VARCHAR"
+        elif has_float and not has_bool:
+            col_types[col] = "DOUBLE"
+        elif has_int and not has_bool:
+            col_types[col] = "BIGINT"
+        elif has_bool and not (has_int or has_float):
+            col_types[col] = "BOOLEAN"
+        else:
+            col_types[col] = None
+
+    db_path_str = str(duckdb_file)
+    if db_path_str != ":memory:":
+        Path(duckdb_file).parent.mkdir(parents=True, exist_ok=True)
+
+    qualified_table = f'"{schema_name}"."{table_name}"'
+
+    with duckdb.connect(db_path_str) as con:
+        con.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";')
+
+        col_defs: list[str] = []
+        for col in columns:
+            c_type = col_types[col] or "VARCHAR"
+            if col == pk_col:
+                col_defs.append(f'"{col}" VARCHAR PRIMARY KEY')
+            else:
+                col_defs.append(f'"{col}" {c_type}')
+
+        con.execute(f"CREATE TABLE IF NOT EXISTS {qualified_table} ({', '.join(col_defs)});")
+
+        existing_info = con.execute(f"DESCRIBE {qualified_table};").fetchall()
+        existing_cols = {row[0]: row[1].upper() for row in existing_info}
+
+        effective_types: dict[str, str] = {}
+        for col in columns:
+            c_type = col_types[col]
+            if col not in existing_cols:
+                target_type = c_type or "VARCHAR"
+                con.execute(f'ALTER TABLE {qualified_table} ADD COLUMN "{col}" {target_type};')
+                effective_types[col] = target_type
+            else:
+                curr_type = existing_cols[col]
+                if c_type is not None and curr_type != c_type:
+                    if curr_type == "JSON":
+                        effective_types[col] = "JSON"
+                    elif c_type in ("JSON", "VARCHAR") and curr_type not in ("VARCHAR", "JSON"):
+                        con.execute(f'ALTER TABLE {qualified_table} ALTER COLUMN "{col}" TYPE VARCHAR;')
+                        effective_types[col] = "VARCHAR"
+                    elif c_type == "DOUBLE" and curr_type == "BIGINT":
+                        con.execute(f'ALTER TABLE {qualified_table} ALTER COLUMN "{col}" TYPE DOUBLE;')
+                        effective_types[col] = "DOUBLE"
+                    else:
+                        effective_types[col] = curr_type
+                else:
+                    effective_types[col] = curr_type
+
+        prepared_rows: list[tuple[Any, ...]] = []
+        for r in clean_records:
+            row_vals: list[Any] = []
+            for col in columns:
+                if col == cert_type_column:
+                    row_vals.append("dom")
+                    continue
+                if col == "location":
+                    row_vals.append(location)
+                    continue
+
+                val = r.get(col)
+                target_t = effective_types[col]
+                if val is None:
+                    row_vals.append(None)
+                elif target_t == "JSON" or isinstance(val, (dict, list)):
+                    row_vals.append(json.dumps(val, ensure_ascii=False))
+                elif target_t == "VARCHAR":
+                    row_vals.append(str(val).strip() if col == pk_col else str(val))
+                else:
+                    row_vals.append(val)
+            prepared_rows.append(tuple(row_vals))
+
+        quoted_cols = ", ".join(f'"{col}"' for col in columns)
+        placeholders = ", ".join(["?"] * len(columns))
+
+        if pk_col:
+            non_pk_cols = [c for c in columns if c != pk_col]
+            update_clause = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in non_pk_cols)
+            sql = f"""
+            INSERT INTO {qualified_table} ({quoted_cols})
+            VALUES ({placeholders})
+            ON CONFLICT ("{pk_col}") DO UPDATE SET
+                {update_clause};
+            """
+        else:
+            sql = f"INSERT INTO {qualified_table} ({quoted_cols}) VALUES ({placeholders});"
+
+        con.executemany(sql, prepared_rows)
+
+    return len(prepared_rows)
+
+
+def load_non_domestic_to_duckdb(
+    records: dict[str, Any] | Sequence[dict[str, Any]],
+    duckdb_file: str | Path = "epc_data.duckdb",
+    table_name: str = "non_domestic_certificates",
+    schema_name: str = "epc_bronze",
+    *,
+    cert_type_column: str = "cert_type",
+    location: str = "England and Wales",
+    primary_key: str | None = None,
+) -> int:
+    """
+    Load/upsert raw non-domestic ('non-dom') EPC records into `epc_bronze.<table_name>` in DuckDB.
+    Keeps all fields and loads embedded dictionaries and lists as-is (JSON) without expanding them.
+    """
+    for ident_name, ident_val in (
+        ("schema_name", schema_name),
+        ("table_name", table_name),
+        ("cert_type_column", cert_type_column),
+    ):
+        if not ident_val or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", ident_val):
+            raise ValueError(
+                f"Invalid {ident_name} '{ident_val}'. Use only letters, numbers, and underscores, "
+                "starting with a letter or underscore."
+            )
+
+    if isinstance(records, dict):
+        row_list = [records]
+    elif isinstance(records, Sequence):
+        row_list = [r for r in records if isinstance(r, dict)]
+    else:
+        raise TypeError("records must be a dict or a sequence of dicts.")
+
+    if not row_list:
+        return 0
+
+    pk_col = primary_key
+    if pk_col is None:
+        for candidate in ("certificate_number", "certificateNumber", "rrn", "assessment_id"):
+            if any(candidate in r and r[candidate] not in (None, "") for r in row_list):
+                pk_col = candidate
+                break
+
+    columns: list[str] = []
+    seen_cols: set[str] = set()
+    if pk_col:
+        columns.append(pk_col)
+        seen_cols.add(pk_col)
+
+    for r in row_list:
+        for k in r.keys():
+            if k not in seen_cols and k not in (cert_type_column, "location"):
+                columns.append(k)
+                seen_cols.add(k)
+
+    for extra_col in (cert_type_column, "location"):
+        if extra_col not in seen_cols:
+            columns.append(extra_col)
+            seen_cols.add(extra_col)
+
+    if pk_col:
+        deduped_map: dict[str, dict[str, Any]] = {}
+        for r in row_list:
+            pk_val = r.get(pk_col)
+            if pk_val is None or str(pk_val).strip() == "":
+                continue
+            deduped_map[str(pk_val).strip()] = r
+        clean_records = list(deduped_map.values())
+    else:
+        clean_records = row_list
+
+    if not clean_records:
+        return 0
+
+    col_types: dict[str, str | None] = {}
+    for col in columns:
+        if col == pk_col or col in (cert_type_column, "location"):
+            col_types[col] = "VARCHAR"
+            continue
+        has_json = has_bool = has_float = has_int = has_str = False
+        for r in clean_records:
+            val = r.get(col)
+            if val is None:
+                continue
+            if isinstance(val, (dict, list)):
+                has_json = True
+            elif isinstance(val, bool):
+                has_bool = True
+            elif isinstance(val, int):
+                has_int = True
+            elif isinstance(val, float):
+                has_float = True
+            else:
+                has_str = True
+
+        if has_json:
+            col_types[col] = "JSON"
+        elif has_str:
+            col_types[col] = "VARCHAR"
+        elif has_float and not has_bool:
+            col_types[col] = "DOUBLE"
+        elif has_int and not has_bool:
+            col_types[col] = "BIGINT"
+        elif has_bool and not (has_int or has_float):
+            col_types[col] = "BOOLEAN"
+        else:
+            col_types[col] = None
+
+    db_path_str = str(duckdb_file)
+    if db_path_str != ":memory:":
+        Path(duckdb_file).parent.mkdir(parents=True, exist_ok=True)
+
+    qualified_table = f'"{schema_name}"."{table_name}"'
+
+    with duckdb.connect(db_path_str) as con:
+        con.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";')
+
+        col_defs: list[str] = []
+        for col in columns:
+            c_type = col_types[col] or "VARCHAR"
+            if col == pk_col:
+                col_defs.append(f'"{col}" VARCHAR PRIMARY KEY')
+            else:
+                col_defs.append(f'"{col}" {c_type}')
+
+        con.execute(f"CREATE TABLE IF NOT EXISTS {qualified_table} ({', '.join(col_defs)});")
+
+        existing_info = con.execute(f"DESCRIBE {qualified_table};").fetchall()
+        existing_cols = {row[0]: row[1].upper() for row in existing_info}
+
+        effective_types: dict[str, str] = {}
+        for col in columns:
+            c_type = col_types[col]
+            if col not in existing_cols:
+                target_type = c_type or "VARCHAR"
+                con.execute(f'ALTER TABLE {qualified_table} ADD COLUMN "{col}" {target_type};')
+                effective_types[col] = target_type
+            else:
+                curr_type = existing_cols[col]
+                if c_type is not None and curr_type != c_type:
+                    if curr_type == "JSON":
+                        effective_types[col] = "JSON"
+                    elif c_type in ("JSON", "VARCHAR") and curr_type not in ("VARCHAR", "JSON"):
+                        con.execute(f'ALTER TABLE {qualified_table} ALTER COLUMN "{col}" TYPE VARCHAR;')
+                        effective_types[col] = "VARCHAR"
+                    elif c_type == "DOUBLE" and curr_type == "BIGINT":
+                        con.execute(f'ALTER TABLE {qualified_table} ALTER COLUMN "{col}" TYPE DOUBLE;')
+                        effective_types[col] = "DOUBLE"
+                    else:
+                        effective_types[col] = curr_type
+                else:
+                    effective_types[col] = curr_type
+
+        prepared_rows: list[tuple[Any, ...]] = []
+        for r in clean_records:
+            row_vals: list[Any] = []
+            for col in columns:
+                if col == cert_type_column:
+                    row_vals.append("non-dom")
+                    continue
+                if col == "location":
+                    row_vals.append(location)
+                    continue
+
+                val = r.get(col)
+                target_t = effective_types[col]
+                if val is None:
+                    row_vals.append(None)
+                elif target_t == "JSON" or isinstance(val, (dict, list)):
+                    row_vals.append(json.dumps(val, ensure_ascii=False))
+                elif target_t == "VARCHAR":
+                    row_vals.append(str(val).strip() if col == pk_col else str(val))
+                else:
+                    row_vals.append(val)
+            prepared_rows.append(tuple(row_vals))
+
+        quoted_cols = ", ".join(f'"{col}"' for col in columns)
+        placeholders = ", ".join(["?"] * len(columns))
+
+        if pk_col:
+            non_pk_cols = [c for c in columns if c != pk_col]
+            update_clause = ", ".join(f'"{c}" = EXCLUDED."{c}"' for c in non_pk_cols)
+            sql = f"""
+            INSERT INTO {qualified_table} ({quoted_cols})
+            VALUES ({placeholders})
+            ON CONFLICT ("{pk_col}") DO UPDATE SET
+                {update_clause};
+            """
+        else:
+            sql = f"INSERT INTO {qualified_table} ({quoted_cols}) VALUES ({placeholders});"
+
+        con.executemany(sql, prepared_rows)
+
+    return len(prepared_rows)
