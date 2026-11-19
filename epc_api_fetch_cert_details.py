@@ -382,6 +382,8 @@ def fetch_certificate_data(
             payload = response.json()
             cert_data = payload.get("data", payload)
             if isinstance(cert_data, dict):
+                if "certificate_number" not in cert_data and "certificateNumber" not in cert_data:
+                    cert_data = {"certificate_number": cert_num, **cert_data}
                 results.append(cert_data)
 
     if output_file is not None:
@@ -404,4 +406,3 @@ def fetch_certificate_data(
     if is_single:
         return results[0] if results else None
     return results
-
