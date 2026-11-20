@@ -14,6 +14,7 @@ def get_epc_certificates(
     cert_type: str,
     month_date: str | date | datetime,
     bearer_token: str,
+    end_date: str | date | datetime | None = None,
     *,
     postcode: str | None = None,
     uprn: str | int | None = None,
@@ -27,8 +28,9 @@ def get_epc_certificates(
     timeout: int = 60,
 ) -> list[dict[str, Any]]:
     """
-    Fetch domestic ('dom') or non-domestic ('non-dom') EPC certificates for a specific month,
-    iterating through all paginated results and optionally saving to a CSV or JSON file.
+    Fetch domestic ('dom') or non-domestic ('non-dom') EPC certificates for a specific month
+    or month range (when `end_date` is provided), iterating through all paginated results
+    and optionally saving to a CSV or JSON file.
     """
     endpoint_map = {
         "dom": "/api/domestic/search",
@@ -52,35 +54,45 @@ def get_epc_certificates(
     if not (1 <= page_size <= 5000):
         raise ValueError("page_size must be between 1 and 5000.")
 
-    # Parse month_date into (date_start, date_end) for that specific month
-    if isinstance(month_date, (datetime, date)):
-        year, month = month_date.year, month_date.month
-    elif isinstance(month_date, str):
-        cleaned = month_date.strip()
-        parsed_dt = None
-        for fmt in ("%Y-%m", "%Y-%m-%d", "%Y/%m", "%m/%Y", "%B %Y", "%b %Y"):
-            try:
-                parsed_dt = datetime.strptime(cleaned, fmt)
-                break
-            except ValueError:
-                continue
-        if parsed_dt is None:
+    def _extract_year_month(val: str | date | datetime, param_name: str) -> tuple[int, int]:
+        if isinstance(val, (datetime, date)):
+            return val.year, val.month
+        if isinstance(val, str):
+            cleaned = val.strip()
+            for fmt in ("%Y-%m", "%Y-%m-%d", "%Y/%m", "%m/%Y", "%B %Y", "%b %Y"):
+                try:
+                    parsed_dt = datetime.strptime(cleaned, fmt)
+                    return parsed_dt.year, parsed_dt.month
+                except ValueError:
+                    continue
             raise ValueError(
-                f"Invalid date format '{month_date}'. Expected 'YYYY-MM' (e.g. '2023-05') "
+                f"Invalid {param_name} format '{val}'. Expected 'YYYY-MM' (e.g. '2023-05') "
                 "or 'YYYY-MM-DD' (e.g. '2023-05-01')."
             )
-        year, month = parsed_dt.year, parsed_dt.month
-    else:
-        raise TypeError("date parameter must be a string, datetime.date, or datetime.datetime.")
+        raise TypeError(f"{param_name} parameter must be a string, datetime.date, or datetime.datetime.")
 
-    first_day = date(year, month, 1)
-    _, last_day_num = calendar.monthrange(year, month)
-    last_day = date(year, month, last_day_num)
+    # Parse start month (1st of month_date)
+    start_year, start_month = _extract_year_month(month_date, "month_date")
+    first_day = date(start_year, start_month, 1)
+
+    # Parse end month (end of end_date's month, or end of month_date's month if blank/None)
+    if end_date is None or (isinstance(end_date, str) and not end_date.strip()):
+        end_year, end_month = start_year, start_month
+    else:
+        end_year, end_month = _extract_year_month(end_date, "end_date")
+
+    _, last_day_num = calendar.monthrange(end_year, end_month)
+    last_day = date(end_year, end_month, last_day_num)
+
+    if last_day < first_day:
+        raise ValueError(
+            f"end_date ({last_day.isoformat()}) cannot be earlier than month_date ({first_day.isoformat()})."
+        )
 
     today = date.today()
     if first_day >= today:
         raise ValueError(
-            f"Requested month ({first_day.strftime('%Y-%m')}) cannot start on or after "
+            f"Requested start month ({first_day.strftime('%Y-%m')}) cannot start on or after "
             f"today's date ({today.isoformat()}). The API does not allow today's or future dates."
         )
     if last_day >= today:
@@ -183,3 +195,7 @@ def get_epc_certificates(
                     f.write("")
 
     return all_certificates
+
+
+
+
