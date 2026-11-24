@@ -602,6 +602,12 @@
       border: 1px solid var(--crimson-border);
     }
 
+    .mini-badge.nocert {
+      background: var(--slate-pill-bg);
+      color: var(--slate-pill-text);
+      border: 1px solid var(--border-strong);
+    }
+
     .scen-title {
       font-size: 14px;
       font-weight: 700;
@@ -924,6 +930,12 @@
       border: 1px solid var(--crimson-border);
     }
 
+    .workflow-badge.nocert {
+      background: var(--slate-pill-bg);
+      color: var(--slate-pill-text);
+      border: 1px solid var(--border-strong);
+    }
+
     .verdict-headline {
       font-size: 16px;
       font-weight: 750;
@@ -1162,7 +1174,7 @@
             Standard spreadsheet lookups miss valid certificates, while generic "fuzzy matching" dangerously assigns a neighbour's or upstairs flat's EPC.
           </p>
           <div class="hero-cta-row">
-            <a href="#explorer" class="btn-primary">Explore 9 Real-World UK Edge Cases ↓</a>
+            <a href="#explorer" class="btn-primary">Explore 10 Real-World UK Edge Cases ↓</a>
           </div>
         </div>
 
@@ -1252,10 +1264,10 @@
 
       <div class="filter-bar">
         <div class="filter-tabs" id="pillarTabs">
-          <button type="button" class="filter-tab active" data-pillar="all">All Scenarios (9)</button>
+          <button type="button" class="filter-tab active" data-pillar="all">All Scenarios (10)</button>
           <button type="button" class="filter-tab" data-pillar="rescue">1. Rescue Messy Data (3)</button>
           <button type="button" class="filter-tab" data-pillar="traps">2. Block Compliance Traps (3)</button>
-          <button type="button" class="filter-tab" data-pillar="quirks">3. UK EPC Register Quirks (3)</button>
+          <button type="button" class="filter-tab" data-pillar="quirks">3. UK EPC Quirks &amp; Exemptions (4)</button>
         </div>
         <div class="step-nav-btns">
           <button type="button" class="step-btn" id="prevScenarioBtn">← Previous</button>
@@ -1402,6 +1414,12 @@
             <td><code>&lt; 60</code> <em>(or any conflict)</em></td>
             <td><span class="mini-badge blocked">Safely Blocked</span></td>
             <td>All structural conflicts (<em>Unit 2 vs Unit 3, 12 vs 12A upstairs flat, Ground vs 1st Floor, odd vs even street side</em>) are hard-capped below 25 so a wrong EPC is never assigned.</td>
+          </tr>
+          <tr>
+            <td><strong>No Cert</strong></td>
+            <td><code>0.0</code></td>
+            <td><span class="mini-badge nocert">⊘ Exempt / No EPC</span></td>
+            <td>Automatically isolates portfolio assets that do not require an EPC (<em>car parks, substations, telephone masts, bus shelters, ATMs, billboards, bare land, churches, portakabins</em>) while protecting real buildings like <em>12 Church Street</em> or <em>Offices &amp; 4 Car Spaces</em>.</td>
           </tr>
         </tbody>
       </table>
@@ -1784,6 +1802,47 @@
             tenant: "Thornton Legal LLP"
           }
         }
+      },
+      {
+        id: "s10_no_cert",
+        pillar: "quirks",
+        pillarLabel: "Pillar 3 • UK EPC Quirks & Exemptions",
+        shortTag: "Exempt / Non-EPC Asset",
+        title: "Substations, Car Parks, Masts & Shelters ('No Cert')",
+        subtitle: "Auto-isolates non-EPC assets without chasing missing certificates",
+        workflowStatus: "nocert",
+        workflowLabel: "No Cert Required • Out of EPC Scope",
+        challenge: "Commercial rent rolls routinely include car parks, electricity substations, telephone masts, bus shelters, ATMs, billboards, and bare land. Without exemption awareness, teams waste hours hunting for 'missing' EPCs—or worse, fuzzy-match them to an adjacent shop!",
+        query: ["Electricity Substation", "Gallagher Retail Park, High Street", "UK Power Networks"],
+        candidates: [
+          { id: "EPC-9101", addr: ["Unit 1", "Gallagher Retail Park, High Street"], score: 0.0, winner: false, note: "Skipped — target asset is exempt from EPC regulations" },
+          { id: "EPC-9102", addr: ["Unit 2", "Gallagher Retail Park, High Street"], score: 0.0, winner: false, note: "Skipped — target asset is exempt from EPC regulations" }
+        ],
+        naiveComparison: "Matches 'Gallagher Retail Park, High Street' fuzzily to a retail unit OR flags the substation as a 'Missing EPC Compliance Gap' for manual investigation.",
+        smartComparison: "Identifies 'Electricity Substation' (alongside car parks, masts, shelters, ATMs, billboards, land & churches) and auto-sets match_tier = 'No Cert' and score = 0.0.",
+        activeComponents: ["unit", "thoroughfare", "estate_or_building"],
+        result: {
+          best_match_id: null,
+          best_match_address: null,
+          score: 0.0,
+          match_tier: "No Cert",
+          reasons: [
+            "Non-EPC / exempt structure detected (Utility & Energy Infrastructure: matched 'electricity substation') — property type does not require an EPC certificate"
+          ],
+          component_scores: { unit: 0.0, floor: 0.0, street_number: 0.0, thoroughfare: 0.0, estate_or_building: 0.0, tenant: 0.0 },
+          tied_ids: [],
+          parsed_query: {
+            normalized: "gallagher retail park high street electricity substation",
+            units: [],
+            estates: ["gallagher retail park"],
+            thoroughfares: ["high street"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "UK Power Networks",
+            is_epc_exempt: true,
+            exempt_category: "Utility & Energy Infrastructure"
+          }
+        }
       }
     ];
 
@@ -1825,7 +1884,9 @@
           ? `✓ ${s.result.score}`
           : s.workflowStatus === "review"
             ? `⚑ ${s.result.score}`
-            : `✕ Blocked`;
+            : s.workflowStatus === "nocert"
+              ? `⊘ No Cert`
+              : `✕ Blocked`;
         return `
           <button type="button" class="scenario-item ${activeClass}" data-id="${s.id}">
             <div class="scen-top">
@@ -1917,23 +1978,27 @@
         ? "var(--emerald-solid)"
         : scen.workflowStatus === "review"
           ? "var(--amber-solid)"
-          : "var(--crimson-solid)";
+          : scen.workflowStatus === "nocert"
+            ? "var(--ink-muted)"
+            : "var(--crimson-solid)";
       arc.style.stroke = strokeColor;
 
       const wfBadge = document.getElementById("workflowBadge");
       wfBadge.className = `workflow-badge ${scen.workflowStatus}`;
       wfBadge.textContent = scen.workflowLabel;
 
-      const headline = scen.result.best_match_id
-        ? scen.result.tied_ids.length > 1
-          ? `Matched Parent Building across ${scen.result.tied_ids.length} Tied EPCs (${scen.result.tied_ids.join(" & ")})`
-          : `Selected Certificate ${scen.result.best_match_id}: "${scen.result.best_match_address.join(", ")}"`
-        : "No Certificate Assigned — False-Positive Match Safely Prevented";
+      const headline = scen.workflowStatus === "nocert"
+        ? "Exempt / Non-EPC Structure Isolated — No EPC Certificate Required (Score 0.0)"
+        : scen.result.best_match_id
+          ? scen.result.tied_ids.length > 1
+            ? `Matched Parent Building across ${scen.result.tied_ids.length} Tied EPCs (${scen.result.tied_ids.join(" & ")})`
+            : `Selected Certificate ${scen.result.best_match_id}: "${scen.result.best_match_address.join(", ")}"`
+          : "No Certificate Assigned — False-Positive Match Safely Prevented";
       document.getElementById("verdictHeadline").textContent = headline;
 
       // Reasons list
       const bulletType = scen.workflowStatus === "approve" ? "ok" : scen.workflowStatus === "review" ? "warn" : "stop";
-      const bulletChar = scen.workflowStatus === "approve" ? "✓" : scen.workflowStatus === "review" ? "!" : "✕";
+      const bulletChar = scen.workflowStatus === "approve" ? "✓" : scen.workflowStatus === "review" ? "!" : scen.workflowStatus === "nocert" ? "⊘" : "✕";
       document.getElementById("auditReasons").innerHTML = scen.result.reasons.map(r => `
         <li>
           <span class="audit-bullet ${bulletType}">${bulletChar}</span>
