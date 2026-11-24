@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UK EPC Intelligent Address Matcher — Client Capabilities Showcase</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --bg-accent: #edf2f7;
+      --surface: #ffffff;
+      --surface-subtle: #f8fafc;
+      --surface-elevated: #ffffff;
+      --ink: #0f172a;
+      --ink-secondary: #334155;
+      --ink-muted: #64748b;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+
+      --brand: #0f3d5e;
+      --brand-light: #e0f2fe;
+      --brand-accent: #0284c7;
+
+      /* UK EPC & Governance Semantic Palette */
+      --emerald-bg: #ecfdf5;
+      --emerald-border: #a7f3d0;
+      --emerald-text: #065f46;
+      --emerald-solid: #059669;
+
+      --teal-bg: #f0fdfa;
+      --teal-border: #99f6e4;
+      --teal-text: #115e59;
+      --teal-solid: #0d9488;
+
+      --amber-bg: #fffbeb;
+      --amber-border: #fde68a;
+      --amber-text: #92400e;
+      --amber-solid: #d97706;
+
+      --crimson-bg: #fef2f2;
+      --crimson-border: #fecaca;
+      --crimson-text: #991b1b;
+      --crimson-solid: #dc2626;
+
+      --slate-pill-bg: #f1f5f9;
+      --slate-pill-text: #475569;
+
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06);
+      --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0b1120;
+      --bg-accent: #111827;
+      --surface: #151f32;
+      --surface-subtle: #1c2840;
+      --surface-elevated: #1e293b;
+      --ink: #f1f5f9;
+      --ink-secondary: #cbd5e1;
+      --ink-muted: #94a3b8;
+      --border: #26354d;
+      --border-strong: #384c6b;
+
+      --brand: #38bdf8;
+      --brand-light: rgba(56, 189, 248, 0.14);
+      --brand-accent: #38bdf8;
+
+      --emerald-bg: rgba(5, 150, 105, 0.16);
+      --emerald-border: rgba(52, 211, 153, 0.35);
+      --emerald-text: #6ee7b7;
+      --emerald-solid: #10b981;
+
+      --teal-bg: rgba(13, 148, 136, 0.18);
+      --teal-border: rgba(45, 212, 191, 0.35);
+      --teal-text: #5eead4;
+      --teal-solid: #14b8a6;
+
+      --amber-bg: rgba(217, 119, 6, 0.16);
+      --amber-border: rgba(251, 191, 36, 0.35);
+      --amber-text: #fcd34d;
+      --amber-solid: #f59e0b;
+
+      --crimson-bg: rgba(220, 38, 38, 0.16);
+      --crimson-border: rgba(248, 113, 113, 0.35);
+      --crimson-text: #fca5a5;
+      --crimson-solid: #ef4444;
+
+      --slate-pill-bg: #24324a;
+      --slate-pill-text: #cbd5e1;
+
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Sticky Top Navigation */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--surface);
+      background: color-mix(in srgb, var(--surface) 90%, transparent);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .epc-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5px;
+      width: 28px;
+    }
+
+    .epc-bars span {
+      display: block;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .epc-bars span:nth-child(1) { width: 55%; background: #059669; }
+    .epc-bars span:nth-child(2) { width: 72%; background: #10b981; }
+    .epc-bars span:nth-child(3) { width: 88%; background: #f59e0b; }
+    .epc-bars span:nth-child(4) { width: 100%; background: #0284c7; }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-weight: 500;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-link {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-secondary);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-link:hover {
+      background: var(--surface-subtle);
+      color: var(--ink);
+    }
+
+    .theme-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--surface-subtle);
+      color: var(--ink-secondary);
+      border: 1px solid var(--border);
+      padding: 7px 13px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .theme-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--ink);
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 28px;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 52px 0 36px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--brand);
+      background: var(--brand-light);
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 0.85fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 3.3vw, 42px);
+      line-height: 1.16;
+      letter-spacing: -0.025em;
+      margin: 0 0 16px;
+      font-weight: 800;
+    }
+
+    .hero p.lead {
+      font-size: 16.5px;
+      color: var(--ink-secondary);
+      margin: 0 0 24px;
+      max-width: 680px;
+    }
+
+    .hero-cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #0f3d5e;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 11px 20px;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    html[data-theme="dark"] .btn-primary {
+      background: #0284c7;
+    }
+
+    .btn-primary:hover {
+      background: #0c314c;
+      transform: translateY(-1px);
+    }
+
+    .hero-problem-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .hero-problem-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-muted);
+      margin-bottom: 14px;
+    }
+
+    .vs-mini-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .vs-mini-item {
+      padding: 11px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      border: 1px solid var(--border);
+      background: var(--surface-subtle);
+    }
+
+    .vs-mini-item strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 13px;
+    }
+
+    .vs-mini-item.bad {
+      border-left: 4px solid var(--crimson-solid);
+    }
+
+    .vs-mini-item.good {
+      border-left: 4px solid var(--emerald-solid);
+      background: var(--emerald-bg);
+      border-color: var(--emerald-border);
+    }
+
+    /* 3 Value Pillar Cards */
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 44px;
+    }
+
+    .pillar-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .pillar-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .pillar-card h3 {
+      margin: 0 0 8px;
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .pillar-card p {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--ink-secondary);
+    }
+
+    /* 4-Step Pipeline Strip */
+    .pipeline-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 26px 28px;
+      margin-bottom: 48px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .section-header h2 {
+      margin: 0;
+      font-size: 21px;
+      font-weight: 750;
+      letter-spacing: -0.015em;
+    }
+
+    .section-header span {
+      font-size: 13.5px;
+      color: var(--ink-muted);
+    }
+
+    .pipeline-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .pipe-step {
+      position: relative;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+    }
+
+    .pipe-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--brand);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    html[data-theme="dark"] .pipe-num {
+      color: #0b1120;
+    }
+
+    .pipe-step h4 {
+      margin: 0 0 6px;
+      font-size: 14.5px;
+      font-weight: 700;
+    }
+
+    .pipe-step p {
+      margin: 0;
+      font-size: 12.8px;
+      color: var(--ink-secondary);
+    }
+
+    /* Interactive Scenario Explorer */
+    .explorer-section {
+      margin-bottom: 56px;
+      scroll-margin-top: 76px;
+    }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-tab {
+      background: var(--surface);
+      color: var(--ink-secondary);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-tab:hover {
+      border-color: var(--border-strong);
+      color: var(--ink);
+    }
+
+    .filter-tab.active {
+      background: #0f3d5e;
+      color: #ffffff;
+      border-color: #0f3d5e;
+    }
+
+    html[data-theme="dark"] .filter-tab.active {
+      background: #0284c7;
+      border-color: #0284c7;
+    }
+
+    .step-nav-btns {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-btn {
+      background: var(--surface);
+      color: var(--ink-secondary);
+      border: 1px solid var(--border);
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .step-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--ink);
+    }
+
+    .explorer-layout {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .scenario-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .scenario-item {
+      text-align: left;
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 13px 15px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .scenario-item:hover {
+      border-color: var(--border-strong);
+      transform: translateX(2px);
+    }
+
+    .scenario-item.active {
+      border-color: var(--brand-accent);
+      background: var(--surface-elevated);
+      box-shadow: var(--shadow-md);
+    }
+
+    .scen-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .scen-cat-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .mini-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .mini-badge.approve {
+      background: var(--emerald-bg);
+      color: var(--emerald-text);
+      border: 1px solid var(--emerald-border);
+    }
+
+    .mini-badge.review {
+      background: var(--amber-bg);
+      color: var(--amber-text);
+      border: 1px solid var(--amber-border);
+    }
+
+    .mini-badge.blocked {
+      background: var(--crimson-bg);
+      color: var(--crimson-text);
+      border: 1px solid var(--crimson-border);
+    }
+
+    .scen-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 3px;
+    }
+
+    .scen-sub {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    /* Stage Panel */
+    .stage-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 26px 28px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .stage-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 18px;
+      margin-bottom: 20px;
+    }
+
+    .stage-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--brand);
+      margin-bottom: 6px;
+    }
+
+    .stage-title {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.015em;
+    }
+
+    .stage-challenge {
+      margin: 0;
+      font-size: 14px;
+      color: var(--ink-secondary);
+    }
+
+    /* Input & Candidates 2-col */
+    .io-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .subcard {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+    }
+
+    .subcard-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-muted);
+      margin-bottom: 12px;
+    }
+
+    .field-row {
+      margin-bottom: 10px;
+    }
+
+    .field-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .field-key {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      margin-bottom: 3px;
+    }
+
+    .field-val {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink);
+      min-height: 35px;
+      display: flex;
+      align-items: center;
+    }
+
+    .field-val.empty {
+      color: var(--ink-muted);
+      font-weight: 400;
+      font-style: italic;
+    }
+
+    .parsed-chips {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      font-size: 11.5px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--slate-pill-bg);
+      color: var(--slate-pill-text);
+      font-weight: 500;
+    }
+
+    .cand-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .cand-row {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .cand-row.winner {
+      border-color: var(--emerald-solid);
+      background: var(--emerald-bg);
+    }
+
+    .cand-row.tied-winner {
+      border-color: var(--amber-solid);
+      background: var(--amber-bg);
+    }
+
+    .cand-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--ink-muted);
+      margin-bottom: 2px;
+    }
+
+    .cand-addr {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .cand-note {
+      font-size: 11.5px;
+      color: var(--ink-secondary);
+      margin-top: 2px;
+    }
+
+    .cand-score-pill {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      background: var(--slate-pill-bg);
+      color: var(--slate-pill-text);
+    }
+
+    .cand-row.winner .cand-score-pill {
+      background: var(--emerald-solid);
+      color: #ffffff;
+    }
+
+    .cand-row.tied-winner .cand-score-pill {
+      background: var(--amber-solid);
+      color: #ffffff;
+    }
+
+    /* Naive vs Smart Comparison Callout */
+    .comparison-banner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .comp-box {
+      border-radius: var(--radius-md);
+      padding: 13px 16px;
+      border: 1px solid var(--border);
+    }
+
+    .comp-box.naive {
+      background: var(--crimson-bg);
+      border-color: var(--crimson-border);
+    }
+
+    .comp-box.smart {
+      background: var(--teal-bg);
+      border-color: var(--teal-border);
+    }
+
+    .comp-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .comp-box.naive .comp-label { color: var(--crimson-text); }
+    .comp-box.smart .comp-label { color: var(--teal-text); }
+
+    .comp-text {
+      font-size: 13px;
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    /* Verdict & Audit Bottom Grid */
+    .verdict-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      background: var(--surface);
+    }
+
+    .verdict-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .score-cluster {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .gauge-wrap {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      flex-shrink: 0;
+    }
+
+    .gauge-wrap svg {
+      transform: rotate(-90deg);
+      width: 68px;
+      height: 68px;
+    }
+
+    .gauge-num {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .gauge-num small {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      margin-top: 2px;
+    }
+
+    .workflow-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 5px;
+    }
+
+    .workflow-badge.approve {
+      background: var(--emerald-bg);
+      color: var(--emerald-text);
+      border: 1px solid var(--emerald-border);
+    }
+
+    .workflow-badge.review {
+      background: var(--amber-bg);
+      color: var(--amber-text);
+      border: 1px solid var(--amber-border);
+    }
+
+    .workflow-badge.blocked {
+      background: var(--crimson-bg);
+      color: var(--crimson-text);
+      border: 1px solid var(--crimson-border);
+    }
+
+    .verdict-headline {
+      font-size: 16px;
+      font-weight: 750;
+      color: var(--ink);
+    }
+
+    .audit-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.95fr;
+      gap: 22px;
+    }
+
+    .audit-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .audit-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      font-size: 13.2px;
+      color: var(--ink-secondary);
+    }
+
+    .audit-bullet {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .audit-bullet.ok {
+      background: var(--emerald-bg);
+      color: var(--emerald-text);
+    }
+
+    .audit-bullet.warn {
+      background: var(--amber-bg);
+      color: var(--amber-text);
+    }
+
+    .audit-bullet.stop {
+      background: var(--crimson-bg);
+      color: var(--crimson-text);
+    }
+
+    .comp-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .bar-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .bar-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-secondary);
+    }
+
+    .bar-track {
+      height: 7px;
+      border-radius: 999px;
+      background: var(--bg-accent);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    /* Raw JSON Toggle */
+    .raw-drawer {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+
+    .raw-toggle-btn {
+      background: none;
+      border: none;
+      color: var(--ink-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .raw-toggle-btn:hover {
+      color: var(--ink);
+    }
+
+    .raw-json {
+      display: none;
+      margin-top: 10px;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      max-height: 280px;
+      line-height: 1.45;
+    }
+
+    .raw-json.open {
+      display: block;
+    }
+
+    /* Governance Tier Table */
+    .governance-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 56px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .gov-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    .gov-table th {
+      text-align: left;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-muted);
+      padding: 10px 14px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .gov-table td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--ink-secondary);
+      vertical-align: top;
+    }
+
+    .gov-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 24px 0 40px;
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .pillars-grid,
+      .pipeline-steps,
+      .explorer-layout,
+      .io-grid,
+      .comparison-banner,
+      .audit-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      .topbar, .filter-bar, .raw-drawer { display: none !important; }
+      body { background: #ffffff; color: #000000; }
+      .stage-panel, .pillar-card, .pipeline-section, .governance-section {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="#" class="brand-mark">
+        <div class="epc-bars" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <div class="brand-title">UK EPC Intelligent Address Matcher</div>
+          <div class="brand-subtitle">Commercial &amp; Mixed-Use Portfolio Matching Engine</div>
+        </div>
+      </a>
+      <div class="nav-actions">
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#explorer" class="nav-link">Edge-Case Explorer</a>
+        <a href="#governance" class="nav-link">Confidence Governance</a>
+        <button type="button" class="theme-btn" id="themeToggle" aria-label="Toggle presentation theme">
+          <span id="themeIcon">🌙</span>
+          <span id="themeLabel">Dark Presentation Mode</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Executive Hero -->
+    <section class="hero">
+      <div class="eyebrow">UK Property &amp; ESG Data Readiness</div>
+      <div class="hero-grid">
+        <div>
+          <h1>Turn Messy Property Lists into Auditable UK EPC Matches — Without False-Positive Risk</h1>
+          <p class="lead">
+            Filtering the UK EPC Register by postcode still leaves 20 to 100+ candidate certificates per street or retail park.
+            Standard spreadsheet lookups miss valid certificates, while generic "fuzzy matching" dangerously assigns a neighbour's or upstairs flat's EPC.
+          </p>
+          <div class="hero-cta-row">
+            <a href="#explorer" class="btn-primary">Explore 9 Real-World UK Edge Cases ↓</a>
+          </div>
+        </div>
+
+        <div class="hero-problem-card">
+          <div class="hero-problem-title">Why Postcode + Standard Fuzzy Matching Fails</div>
+          <div class="vs-mini-row">
+            <div class="vs-mini-item bad">
+              <strong>❌ Excel / Exact Lookup: Too Rigid</strong>
+              Misses valid certificates when towns bleed into unit fields, abbreviations differ (<em>"St John's St"</em>), or High Street EPCs only list the shop brand (<em>"Costa Coffee"</em>).
+            </div>
+            <div class="vs-mini-item bad">
+              <strong>❌ Generic Fuzzy Match: Dangerous Compliance Risk</strong>
+              Scores <em>"Unit 2, Gallagher Retail Park"</em> vs <em>"Unit 3, Gallagher Retail Park"</em> at <strong>97% similarity</strong> — silently assigning the wrong EPC rating.
+            </div>
+            <div class="vs-mini-item good">
+              <strong>✓ Domain-Built UK EPC Engine: Best of Both</strong>
+              Decomposes UK units, floors, odd/even street ranges, and tenant brands while enforcing strict structural vetoes against lookalike traps.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 Executive Pillars -->
+    <section class="pillars-grid">
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background: var(--emerald-bg); color: var(--emerald-solid);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3>1. Rescue Messy Portfolio Data</h3>
+        <p>Unpacks single-line CRM/lease feeds, strips stray UK towns &amp; postcodes, resolves lease-vs-EPC synonyms (<em>Suite ↔ Office, Flat ↔ Apartment, Shop ↔ Ground Floor</em>), and runs a second-sweep Tenant Brand rescue.</p>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background: var(--crimson-bg); color: var(--crimson-solid);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>2. Zero False-Positive Assignments</h3>
+        <p>Hard structural guardrails veto conflicting units (<em>Unit 2 vs 3</em>), mixed-use shop vs upstairs flat suffixes (<em>12 vs 12A</em>), conflicting floors, and opposite sides of UK streets before fuzzy scoring can mislead.</p>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background: var(--brand-light); color: var(--brand-accent);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <h3>3. Plain-English Auditability</h3>
+        <p>Every property receives a calibrated 0–100 score, an operational workflow decision (<strong>Auto-Approve</strong>, <strong>Review Recommended</strong>, or <strong>Safely Blocked</strong>), plain-English audit reasons, and duplicate EPC tie flags.</p>
+      </div>
+    </section>
+
+    <!-- 4-Step Pipeline -->
+    <section class="pipeline-section" id="how-it-works">
+      <div class="section-header">
+        <h2>How the Decision Engine Evaluates Every Property</h2>
+        <span>Four deterministic stages — zero black-box guesswork</span>
+      </div>
+      <div class="pipeline-steps">
+        <div class="pipe-step">
+          <div class="pipe-num">1</div>
+          <h4>Unpack &amp; Standardise</h4>
+          <p>Splits muddled lines, removes embedded UK postcodes &amp; 400+ post-towns, and disambiguates <em>"St"</em> (Saint vs Street) and UK abbreviations.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-num">2</div>
+          <h4>Structural Guardrails</h4>
+          <p>Checks Unit IDs, Floors, Building/Estate names, UK odd/even street ranges, and letter suffixes (<em>12 vs 12A</em>) to immediately block wrong neighbours.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-num">3</div>
+          <h4>Tenant Second-Sweep</h4>
+          <p>Strips legal boilerplate (<em>Ltd, PLC, Holdings</em>) to rescue unnumbered High Street shops via occupier brand — without penalising 10-year tenant churn.</p>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-num">4</div>
+          <h4>Audited Routing</h4>
+          <p>Routes high-certainty matches straight through, caps whole-building fallbacks for human review, and flags tied historical vs current EPC renewals.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Edge-Case Explorer -->
+    <section class="explorer-section" id="explorer">
+      <div class="section-header">
+        <h2>Interactive UK Edge-Case Explorer</h2>
+        <span>Click any real-world scenario below to inspect how the engine handles messy inputs and compliance traps</span>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-tabs" id="pillarTabs">
+          <button type="button" class="filter-tab active" data-pillar="all">All Scenarios (9)</button>
+          <button type="button" class="filter-tab" data-pillar="rescue">1. Rescue Messy Data (3)</button>
+          <button type="button" class="filter-tab" data-pillar="traps">2. Block Compliance Traps (3)</button>
+          <button type="button" class="filter-tab" data-pillar="quirks">3. UK EPC Register Quirks (3)</button>
+        </div>
+        <div class="step-nav-btns">
+          <button type="button" class="step-btn" id="prevScenarioBtn">← Previous</button>
+          <button type="button" class="step-btn" id="nextScenarioBtn">Next Case →</button>
+        </div>
+      </div>
+
+      <div class="explorer-layout">
+        <!-- Left Sidebar List -->
+        <div class="scenario-list" id="scenarioList"></div>
+
+        <!-- Right Interactive Stage -->
+        <div class="stage-panel" id="stagePanel">
+          <div class="stage-header">
+            <div class="stage-kicker" id="stageKicker"></div>
+            <h3 class="stage-title" id="stageTitle"></h3>
+            <p class="stage-challenge" id="stageChallenge"></p>
+          </div>
+
+          <div class="io-grid">
+            <!-- Input Record -->
+            <div class="subcard">
+              <div class="subcard-label">
+                <span>Your Portfolio / Lease Input</span>
+                <span style="font-weight:500;">Same Postcode</span>
+              </div>
+              <div class="field-row">
+                <div class="field-key">Unit Name</div>
+                <div class="field-val" id="qUnit"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-key">Street Address</div>
+                <div class="field-val" id="qStreet"></div>
+              </div>
+              <div class="field-row">
+                <div class="field-key">Current Tenant / Occupier</div>
+                <div class="field-val" id="qTenant"></div>
+              </div>
+              <div class="parsed-chips" id="parsedChips"></div>
+            </div>
+
+            <!-- Postcode EPC Candidates -->
+            <div class="subcard">
+              <div class="subcard-label">
+                <span>Postcode EPC Register Candidates</span>
+                <span id="candCountLabel"></span>
+              </div>
+              <div class="cand-list" id="candList"></div>
+            </div>
+          </div>
+
+          <!-- Standard vs Smart Callout -->
+          <div class="comparison-banner">
+            <div class="comp-box naive">
+              <div class="comp-label">Standard Lookup / Generic Fuzzy Match</div>
+              <div class="comp-text" id="naiveText"></div>
+            </div>
+            <div class="comp-box smart">
+              <div class="comp-label">UK EPC Intelligent Matcher</div>
+              <div class="comp-text" id="smartText"></div>
+            </div>
+          </div>
+
+          <!-- Verdict & Plain-English Audit -->
+          <div class="verdict-card">
+            <div class="verdict-top">
+              <div class="score-cluster">
+                <div class="gauge-wrap">
+                  <svg viewBox="0 0 68 68">
+                    <circle cx="34" cy="34" r="28" fill="none" stroke="var(--bg-accent)" stroke-width="6.5" />
+                    <circle id="gaugeArc" cx="34" cy="34" r="28" fill="none" stroke="#059669" stroke-width="6.5"
+                            stroke-linecap="round" stroke-dasharray="175.9" stroke-dashoffset="0" />
+                  </svg>
+                  <div class="gauge-num">
+                    <span id="scoreVal">100</span>
+                    <small>/ 100</small>
+                  </div>
+                </div>
+                <div>
+                  <div id="workflowBadge" class="workflow-badge approve"></div>
+                  <div class="verdict-headline" id="verdictHeadline"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="audit-grid">
+              <div>
+                <div class="subcard-label" style="margin-bottom:10px;">Plain-English Audit Trail</div>
+                <ul class="audit-list" id="auditReasons"></ul>
+              </div>
+              <div>
+                <div class="subcard-label" style="margin-bottom:10px;">Component Alignment Breakdown</div>
+                <div class="comp-bars" id="compBars"></div>
+              </div>
+            </div>
+
+            <div class="raw-drawer">
+              <button type="button" class="raw-toggle-btn" id="rawToggleBtn">
+                <span id="rawToggleArrow">▸</span> Inspect Raw Data Output (For Data &amp; Analytics Teams)
+              </button>
+              <pre class="raw-json" id="rawJsonBox"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Confidence Governance Matrix -->
+    <section class="governance-section" id="governance">
+      <div class="section-header">
+        <h2>Operational Governance &amp; Confidence Thresholds</h2>
+        <span>Configurable cutoffs let your team balance straight-through automation with 100% audit control</span>
+      </div>
+      <table class="gov-table">
+        <thead>
+          <tr>
+            <th>Confidence Tier</th>
+            <th>Score Band</th>
+            <th>Recommended Workflow Action</th>
+            <th>What Qualifies for This Band</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Exact</strong></td>
+            <td><code>95 – 100</code></td>
+            <td><span class="mini-badge approve">Auto-Approve</span></td>
+            <td>Complete structural alignment of unit, floor, building, and street after expanding UK abbreviations, stripping towns/postcodes, or ignoring outdated historical tenant text.</td>
+          </tr>
+          <tr>
+            <td><strong>High</strong></td>
+            <td><code>80 – 94.9</code></td>
+            <td><span class="mini-badge approve">Auto-Approve</span></td>
+            <td>Contained within a valid multi-unit or same-side street range (<em>14 in 12–16 High St</em>), compatible UK commercial labels (<em>Shop ↔ Ground Floor, Suite 3 ↔ Unit 3</em>), or rescued via Second-Sweep Tenant Brand match.</td>
+          </tr>
+          <tr>
+            <td><strong>Medium</strong></td>
+            <td><code>60 – 79.9</code></td>
+            <td><span class="mini-badge review">Review Recommended</span></td>
+            <td>Whole-building / parent EPC fallback when a queried floor or sub-unit has no separate certificate on the register, or occupier-only postcode records.</td>
+          </tr>
+          <tr>
+            <td><strong>Low / No Match</strong></td>
+            <td><code>&lt; 60</code> <em>(or any conflict)</em></td>
+            <td><span class="mini-badge blocked">Safely Blocked</span></td>
+            <td>All structural conflicts (<em>Unit 2 vs Unit 3, 12 vs 12A upstairs flat, Ground vs 1st Floor, odd vs even street side</em>) are hard-capped below 25 so a wrong EPC is never assigned.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      UK EPC Intelligent Address Matcher &bull; Deterministic Structural &amp; Occupier Matching for Commercial and Mixed-Use Portfolios
+    </div>
+  </footer>
+
+  <script>
+    const SCENARIOS = [
+      {
+        id: "s1_messy_bleed",
+        pillar: "rescue",
+        pillarLabel: "Pillar 1 • Rescue Messy Data",
+        shortTag: "Field Bleed & Noise",
+        title: "Everything Crammed into 'Unit Name'",
+        subtitle: "Unit, street, town, county & postcode in one box",
+        workflowStatus: "approve",
+        workflowLabel: "Auto-Approve • Exact Match",
+        challenge: "In real CRM and lease exports, the entire address — including town, county, and postcode — is often pasted into 'Unit Name' while 'Street Address' is left blank. Extra town words dilute standard matchers.",
+        query: ["Unit 3, 15 High St, Guildford, Surrey, GU1 3AA", "", "Specsavers Optical Group Ltd"],
+        candidates: [
+          { id: "EPC-9041", addr: ["Specsavers, Unit 3", "15 High Street"], score: 100.0, winner: true, note: "Matched Unit 3 + 15 High Street + Tenant brand" },
+          { id: "EPC-9042", addr: ["Unit 4", "15 High Street"], score: 7.5, winner: false, note: "Vetoed: Unit 3 vs Unit 4" },
+          { id: "EPC-9043", addr: ["First Floor Flat", "15A High Street"], score: 7.5, winner: false, note: "Vetoed: 15 vs 15A & Commercial vs Flat" }
+        ],
+        naiveComparison: "Fails exact lookup (Street field is blank) and loses similarity points because 'Guildford, Surrey, GU1 3AA' does not appear in EPC address lines.",
+        smartComparison: "Unpacks the single string, strips 'Guildford', 'Surrey', and 'GU1 3AA' harmlessly, expands 'St' → 'Street', and confirms 'Specsavers' for a 100/100 Exact match.",
+        activeComponents: ["unit", "street_number", "thoroughfare", "tenant"],
+        result: {
+          best_match_id: "EPC-9041",
+          best_match_address: ["Specsavers, Unit 3", "15 High Street"],
+          score: 100.0,
+          match_tier: "Exact",
+          reasons: [
+            "Exact street match ('High Street')",
+            "Exact street number match ('15')",
+            "Exact unit match ('Unit 3')",
+            "Confirmed by tenant/occupier match ('Specsavers Optical', 82%)"
+          ],
+          component_scores: { unit: 100.0, floor: 0.0, street_number: 100.0, thoroughfare: 100.0, estate_or_building: 0.0, tenant: 82.5 },
+          tied_ids: ["EPC-9041"],
+          parsed_query: {
+            normalized: "unit 3 15 high street",
+            units: ["Unit 3"],
+            street_numbers: ["15"],
+            thoroughfares: ["high street"],
+            stripped_localities: ["guildford", "surrey"],
+            stripped_postcode: "GU1 3AA",
+            tenant: "Specsavers Optical Group Ltd"
+          }
+        }
+      },
+      {
+        id: "s2_tenant_rescue",
+        pillar: "rescue",
+        pillarLabel: "Pillar 1 • Rescue Messy Data",
+        shortTag: "Tenant Second-Sweep",
+        title: "High Street Shop Missing Street Number on EPC",
+        subtitle: "Rescued via 'Costa Limited' → 'Costa Coffee'",
+        workflowStatus: "approve",
+        workflowLabel: "Auto-Approve • High Confidence",
+        challenge: "Non-domestic EPC assessors frequently omit street numbers on retail parades and identify the demise solely by the shop fascia ('Costa Coffee, High Street'), causing address-only matchers to fail.",
+        query: ["", "14 High Street", "Costa Limited"],
+        candidates: [
+          { id: "EPC-3101", addr: ["Greggs", "High Street"], score: 44.0, winner: false, note: "Street only — occupier mismatch" },
+          { id: "EPC-3102", addr: ["Costa Coffee", "High Street"], score: 83.9, winner: true, note: "Rescued via Second-Sweep Tenant Match" },
+          { id: "EPC-3103", addr: ["Boots The Chemist", "High Street"], score: 44.0, winner: false, note: "Street only — occupier mismatch" }
+        ],
+        naiveComparison: "Cannot match '14 High Street' to 'High Street' without guessing blindly among Greggs, Costa, and Boots — forced into manual spreadsheet lookup.",
+        smartComparison: "Strips 'Limited' from 'Costa Limited' and runs a Second-Sweep Tenant Match against the High Street candidates, pinpointing 'Costa Coffee' at 83.9 (High).",
+        activeComponents: ["thoroughfare", "tenant"],
+        result: {
+          best_match_id: "EPC-3102",
+          best_match_address: ["Costa Coffee", "High Street"],
+          score: 83.9,
+          match_tier: "High",
+          reasons: [
+            "Exact street match ('High Street')",
+            "Second-sweep tenant match ('Costa', 82%) resolved address lacking shared unit/street number"
+          ],
+          component_scores: { unit: 0.0, floor: 0.0, street_number: 0.0, thoroughfare: 100.0, estate_or_building: 0.0, tenant: 82.5 },
+          tied_ids: ["EPC-3102"],
+          parsed_query: {
+            normalized: "14 high street",
+            street_numbers: ["14"],
+            thoroughfares: ["high street"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "Costa Limited"
+          }
+        }
+      },
+      {
+        id: "s3_synonyms_st",
+        pillar: "rescue",
+        pillarLabel: "Pillar 1 • Rescue Messy Data",
+        shortTag: "UK Synonyms & 'St'",
+        title: "'Shop' vs 'Ground Floor' & 'St John's St'",
+        subtitle: "Smart UK retail synonyms + Saint vs Street",
+        workflowStatus: "approve",
+        workflowLabel: "Auto-Approve • High Confidence",
+        challenge: "Your lease says 'Shop, 12 St John's St', while the EPC says 'Ground Floor, 12 Saint Johns Street'. Notice 'St' appears twice in the same line — once meaning 'Saint' and once meaning 'Street'!",
+        query: ["Shop", "12 St John's St", "Greggs PLC"],
+        candidates: [
+          { id: "EPC-4410", addr: ["First Floor Apartment", "12 Saint Johns Street"], score: 7.5, winner: false, note: "Vetoed: Commercial Shop vs Residential Apartment" },
+          { id: "EPC-4411", addr: ["Ground Floor", "12 Saint Johns Street"], score: 90.0, winner: true, note: "Matched Shop ↔ Ground Floor at #12" },
+          { id: "EPC-4412", addr: ["Ground Floor", "14 Saint Marys Street"], score: 6.0, winner: false, note: "Vetoed: #12 vs #14 & St Johns vs St Marys" }
+        ],
+        naiveComparison: "Naive abbreviation rules turn '12 St John's St' into '12 Street Johns Street', and fail to connect 'Shop' with 'Ground Floor'.",
+        smartComparison: "Positionally resolves 'St John's St' → 'Saint Johns Street', blocks the upstairs Apartment at #12, and equates retail 'Shop' with 'Ground Floor' (90.0 High).",
+        activeComponents: ["unit", "floor", "street_number", "thoroughfare"],
+        result: {
+          best_match_id: "EPC-4411",
+          best_match_address: ["Ground Floor", "12 Saint Johns Street"],
+          score: 90.0,
+          match_tier: "High",
+          reasons: [
+            "Exact street match ('Saint Johns Street')",
+            "Exact street number match ('12')",
+            "Matched retail 'Shop' to 'Ground Floor' at same address"
+          ],
+          component_scores: { unit: 88.0, floor: 88.0, street_number: 100.0, thoroughfare: 100.0, estate_or_building: 0.0, tenant: 0.0 },
+          tied_ids: ["EPC-4411"],
+          parsed_query: {
+            normalized: "shop 12 saint johns street",
+            units: ["Shop"],
+            street_numbers: ["12"],
+            thoroughfares: ["saint johns street"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "Greggs PLC"
+          }
+        }
+      },
+      {
+        id: "s4_neighbour_trap",
+        pillar: "traps",
+        pillarLabel: "Pillar 2 • Block Compliance Traps",
+        shortTag: "97% Fuzzy Trap",
+        title: "The Lookalike Retail Park Neighbour (Unit 2 vs Unit 3)",
+        subtitle: "Prevents assigning a neighbour's EPC when yours is missing",
+        workflowStatus: "blocked",
+        workflowLabel: "Safely Blocked • Zero False Match",
+        challenge: "Suppose Unit 2 has no EPC lodged yet, while Unit 3 next door does. Because 'Unit 2, Gallagher Retail & Industrial Park, Great Western Way' and 'Unit 3, Gallagher...' share 54 out of 55 characters, standard fuzzy matchers score them 97% identical!",
+        query: ["Unit 2", "Gallagher Retail & Industrial Park, Great Western Way", "B&Q PLC"],
+        candidates: [
+          { id: "EPC-7701", addr: ["Unit 3", "Gallagher Retail & Industrial Park, Great Western Way"], score: 15.0, winner: false, note: "Hard Veto: Conflicting Unit 2 vs Unit 3" },
+          { id: "EPC-7702", addr: ["Unit 4", "Gallagher Retail & Industrial Park, Great Western Way"], score: 15.0, winner: false, note: "Hard Veto: Conflicting Unit 2 vs Unit 4" }
+        ],
+        naiveComparison: "DANGEROUS FALSE POSITIVE: Standard Levenshtein/fuzzy matching scores 97% similarity and silently assigns Unit 3's EPC certificate to Unit 2.",
+        smartComparison: "Detects that both records specify explicit commercial unit IDs ('2' vs '3') and triggers a hard structural veto — safely returning No Match.",
+        activeComponents: ["unit", "thoroughfare", "estate_or_building"],
+        result: {
+          best_match_id: null,
+          best_match_address: null,
+          score: 15.0,
+          match_tier: "No Match",
+          reasons: [
+            "Rejected closest candidate 'EPC-7701': Conflicting unit identifiers ('Unit 2' vs 'Unit 3') despite matching estate and street"
+          ],
+          component_scores: { unit: 0.0, floor: 0.0, street_number: 0.0, thoroughfare: 100.0, estate_or_building: 100.0, tenant: 0.0 },
+          tied_ids: [],
+          parsed_query: {
+            normalized: "unit 2 gallagher retail and industrial park great western way",
+            units: ["Unit 2"],
+            estates: ["gallagher retail and industrial park"],
+            thoroughfares: ["great western way"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "B&Q PLC"
+          }
+        }
+      },
+      {
+        id: "s5_12_vs_12a",
+        pillar: "traps",
+        pillarLabel: "Pillar 2 • Block Compliance Traps",
+        shortTag: "12 vs 12A Mixed-Use",
+        title: "Ground-Floor Shop (12) vs Upstairs Flat (12A)",
+        subtitle: "Stops domestic flat EPCs polluting commercial reporting",
+        workflowStatus: "blocked",
+        workflowLabel: "Safely Blocked • Zero False Match",
+        challenge: "On UK high streets, '12 High Street' is typically the ground-floor retail unit while '12A High Street' is the residential flat upstairs. Only '12A' has an EPC on the register.",
+        query: ["", "12 High Street", "Waterstones Booksellers Ltd"],
+        candidates: [
+          { id: "EPC-5501", addr: ["12A High Street"], score: 7.5, winner: false, note: "Hard Veto: Number suffix conflict ('12' vs '12a')" },
+          { id: "EPC-5502", addr: ["Flat 1, First Floor", "14 High Street"], score: 7.5, winner: false, note: "Hard Veto: Street number '12' vs '14'" }
+        ],
+        naiveComparison: "DANGEROUS FALSE POSITIVE: Scores '12 High Street' vs '12A High Street' at 96% similarity — pulling a domestic flat's EPC into your commercial portfolio.",
+        smartComparison: "Treats UK number suffixes ('12' vs '12A') as distinct properties and blocks the match below 10/100 with a clear suffix-conflict audit note.",
+        activeComponents: ["street_number", "thoroughfare"],
+        result: {
+          best_match_id: null,
+          best_match_address: null,
+          score: 7.5,
+          match_tier: "No Match",
+          reasons: [
+            "Rejected closest candidate 'EPC-5501' (12A High Street): Conflicting street number suffix ('12' vs '12a')"
+          ],
+          component_scores: { unit: 0.0, floor: 0.0, street_number: 0.0, thoroughfare: 100.0, estate_or_building: 0.0, tenant: 0.0 },
+          tied_ids: [],
+          parsed_query: {
+            normalized: "12 high street",
+            street_numbers: ["12"],
+            thoroughfares: ["high street"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "Waterstones Booksellers Ltd"
+          }
+        }
+      },
+      {
+        id: "s6_street_tenant_trap",
+        pillar: "traps",
+        pillarLabel: "Pillar 2 • Block Compliance Traps",
+        shortTag: "Geo-Named Tenant Trap",
+        title: "Tenant Named After the Street ('Station Road Dental')",
+        subtitle: "Prevents street words inside a company name faking a tenant match",
+        workflowStatus: "blocked",
+        workflowLabel: "Safely Blocked • Below Review Cutoff",
+        challenge: "Many clinics, garages, and convenience stores include their street in their legal name ('Station Road Dental Practice Ltd'). Naive tenant matching sees 'Station Road' in both the tenant name and 'Hair Salon, Station Road' and declares a match!",
+        query: ["", "24 Station Road", "Station Road Dental Practice Ltd"],
+        candidates: [
+          { id: "EPC-6202", addr: ["Hair Salon", "Station Road"], score: 44.0, winner: false, note: "0% Tenant match ('Station Road' subtracted); rejected at min_score=60" },
+          { id: "EPC-6201", addr: ["99 Station Road"], score: 7.5, winner: false, note: "Hard Veto: Street number 24 vs 99" }
+        ],
+        naiveComparison: "Sees two shared words ('Station Road') between the Tenant Name and 'Hair Salon, Station Road', falsely triggering a tenant match on someone else's shop.",
+        smartComparison: "Subtracts street & town words from tenant names before comparison — leaving only 'Dental Practice' (0% match against 'Hair Salon') and safely blocking false rescue.",
+        activeComponents: ["street_number", "thoroughfare", "tenant"],
+        result: {
+          best_match_id: null,
+          best_match_address: null,
+          score: 44.0,
+          match_tier: "No Match",
+          reasons: [
+            "Geographic words ('Station Road') subtracted from tenant name -> 0% tenant match against 'Hair Salon'",
+            "Best candidate 'EPC-6202' scored 44.0 (below Medium cutoff 60.0): street matched, but street number '24' is missing on candidate"
+          ],
+          component_scores: { unit: 0.0, floor: 0.0, street_number: 0.0, thoroughfare: 100.0, estate_or_building: 0.0, tenant: 0.0 },
+          tied_ids: [],
+          parsed_query: {
+            normalized: "24 station road",
+            street_numbers: ["24"],
+            thoroughfares: ["station road"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "Station Road Dental Practice Ltd"
+          }
+        }
+      },
+      {
+        id: "s7_uk_parity_range",
+        pillar: "quirks",
+        pillarLabel: "Pillar 3 • UK EPC Register Quirks",
+        shortTag: "UK Odd/Even Street Sides",
+        title: "Multi-Number Range & UK Odd/Even Street Parity",
+        subtitle: "14 High St sits inside 12–16 High St (while 13 is across the road!)",
+        workflowStatus: "approve",
+        workflowLabel: "Auto-Approve • High Confidence",
+        challenge: "Commercial parades often hold a single EPC covering '12-16 High Street'. On UK streets, even numbers (12, 14, 16) are on one side and odd numbers (11, 13, 15) are opposite.",
+        query: ["", "14 High Street", "Next Retail Ltd"],
+        candidates: [
+          { id: "EPC-8100", addr: ["12-16 High Street"], score: 89.0, winner: true, note: "Even #14 is contained in even range 12–16" },
+          { id: "EPC-8101", addr: ["11-15 High Street"], score: 7.5, winner: false, note: "Vetoed: Odd side of street (11, 13, 15)" },
+          { id: "EPC-8102", addr: ["18 High Street"], score: 7.5, winner: false, note: "Vetoed: #14 vs #18" }
+        ],
+        naiveComparison: "Treats '14' vs '12-16' as non-matching strings — OR naively treats numeric '11-15' as containing '14' even though 11–15 is on the opposite side of the road!",
+        smartComparison: "Expands UK street ranges by parity: '12-16' → {12, 14, 16} and '11-15' → {11, 13, 15}, matching '14 High Street' to '12-16 High Street' at 89.0 (High).",
+        activeComponents: ["street_number", "thoroughfare"],
+        result: {
+          best_match_id: "EPC-8100",
+          best_match_address: ["12-16 High Street"],
+          score: 89.0,
+          match_tier: "High",
+          reasons: [
+            "Exact street match ('High Street')",
+            "Queried street number '14' is contained within candidate same-parity range '12-16'"
+          ],
+          component_scores: { unit: 0.0, floor: 0.0, street_number: 86.0, thoroughfare: 100.0, estate_or_building: 0.0, tenant: 0.0 },
+          tied_ids: ["EPC-8100"],
+          parsed_query: {
+            normalized: "14 high street",
+            street_numbers: ["14"],
+            thoroughfares: ["high street"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "Next Retail Ltd"
+          }
+        }
+      },
+      {
+        id: "s8_tenant_churn",
+        pillar: "quirks",
+        pillarLabel: "Pillar 3 • UK EPC Register Quirks",
+        shortTag: "10-Year Tenant Churn",
+        title: "Valid Historical EPC Lists a Former Tenant ('Blockbuster')",
+        subtitle: "Never penalises strong structural matches for outdated occupiers",
+        workflowStatus: "approve",
+        workflowLabel: "Auto-Approve • Exact Match",
+        challenge: "Because UK EPC certificates remain valid for 10 years, an active 2016 certificate on the register may still say 'Blockbuster Video Ltd, Unit 4, 12 High Street' while today's tenant is 'Superdrug PLC'.",
+        query: ["Unit 4", "12 High Street", "Superdrug Stores PLC"],
+        candidates: [
+          { id: "EPC-2016", addr: ["Blockbuster Video Ltd, Unit 4", "12 High Street"], score: 99.0, winner: true, note: "Exact Unit 4 + 12 High St (former tenant ignored)" },
+          { id: "EPC-9902", addr: ["Unit 5", "12 High Street"], score: 7.5, winner: false, note: "Vetoed: Unit 4 vs Unit 5" }
+        ],
+        naiveComparison: "Penalises similarity heavily because 'Blockbuster Video Ltd' looks completely different from 'Superdrug Stores PLC', dropping a valid Exact match into manual review.",
+        smartComparison: "Isolates structural components (Unit 4 + 12 High Street = 100%) and treats tenant names strictly as a positive booster/tie-breaker — scoring 99.0 Exact.",
+        activeComponents: ["unit", "street_number", "thoroughfare"],
+        result: {
+          best_match_id: "EPC-2016",
+          best_match_address: ["Blockbuster Video Ltd, Unit 4", "12 High Street"],
+          score: 99.0,
+          match_tier: "Exact",
+          reasons: [
+            "Exact street match ('High Street')",
+            "Exact street number match ('12')",
+            "Exact unit match ('Unit 4')",
+            "Historical occupier text ('Blockbuster Video Ltd') ignored without penalty"
+          ],
+          component_scores: { unit: 100.0, floor: 0.0, street_number: 100.0, thoroughfare: 100.0, estate_or_building: 0.0, tenant: 0.0 },
+          tied_ids: ["EPC-2016"],
+          parsed_query: {
+            normalized: "unit 4 12 high street",
+            units: ["Unit 4"],
+            street_numbers: ["12"],
+            thoroughfares: ["high street"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "Superdrug Stores PLC"
+          }
+        }
+      },
+      {
+        id: "s9_parent_and_ties",
+        pillar: "quirks",
+        pillarLabel: "Pillar 3 • UK EPC Register Quirks",
+        shortTag: "Whole-Building & Ties",
+        title: "Whole-Building Fallback & Duplicate Renewal EPCs",
+        subtitle: "Caps confidence for review + flags tied 2015 & 2024 certificates",
+        workflowStatus: "review",
+        workflowLabel: "Review Recommended • Parent Match",
+        challenge: "Your lease covers 'Ground Floor, Apex House, 10 Station Road', but the landlord lodged whole-building EPCs for 'Apex House, 10 Station Road' in both 2015 and 2024.",
+        query: ["Ground Floor", "Apex House, 10 Station Road", "Thornton Legal LLP"],
+        candidates: [
+          { id: "EPC-2015-EXP", addr: ["Apex Hse", "10 Station Rd"], score: 74.0, winner: false, tied: true, note: "Tied Parent Building Match (2015 Certificate)" },
+          { id: "EPC-2024-CUR", addr: ["Apex House", "10 Station Road"], score: 74.0, winner: false, tied: true, note: "Tied Parent Building Match (2024 Renewal)" },
+          { id: "EPC-FLR2", addr: ["Second Floor, Apex House", "10 Station Road"], score: 15.0, winner: false, note: "Vetoed: Ground Floor vs 2nd Floor" }
+        ],
+        naiveComparison: "Either rejects the whole-building EPC because 'Ground Floor' is missing, OR picks the expired 2015 certificate arbitrarily without warning you of the 2024 tie.",
+        smartComparison: "Blocks 'Second Floor', matches the parent building at capped Medium confidence (74.0 — Review Recommended), and surfaces both tied IDs so you select the 2024 renewal.",
+        activeComponents: ["floor", "street_number", "thoroughfare", "estate_or_building"],
+        result: {
+          best_match_id: "EPC-2015-EXP",
+          best_match_address: ["Apex Hse", "10 Station Rd"],
+          score: 74.0,
+          match_tier: "Medium",
+          reasons: [
+            "Exact street match ('Station Road')",
+            "Exact building/estate match ('Apex House')",
+            "Exact street number match ('10')",
+            "Matched parent building only; candidate has no sub-unit/floor specified for queried 'Ground Floor'",
+            "Tie detected across 2 EPC candidates ('EPC-2015-EXP', 'EPC-2024-CUR') with equal top score (74.0)"
+          ],
+          component_scores: { unit: 0.0, floor: 0.0, street_number: 100.0, thoroughfare: 100.0, estate_or_building: 100.0, tenant: 0.0 },
+          tied_ids: ["EPC-2015-EXP", "EPC-2024-CUR"],
+          parsed_query: {
+            normalized: "floor 0 10 apex house station road",
+            floors: ["Ground Floor"],
+            buildings: ["apex house"],
+            street_numbers: ["10"],
+            thoroughfares: ["station road"],
+            stripped_localities: [],
+            stripped_postcode: null,
+            tenant: "Thornton Legal LLP"
+          }
+        }
+      }
+    ];
+
+    const COMPONENT_LABELS = {
+      unit: "Unit / Demise",
+      floor: "Floor Level",
+      street_number: "Street Number / Range",
+      thoroughfare: "Street Thoroughfare",
+      estate_or_building: "Building / Estate",
+      tenant: "Tenant / Brand"
+    };
+
+    let currentFilter = "all";
+    let currentScenarioId = SCENARIOS[0].id;
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function getFilteredScenarios() {
+      if (currentFilter === "all") return SCENARIOS;
+      return SCENARIOS.filter(s => s.pillar === currentFilter);
+    }
+
+    function renderScenarioList() {
+      const listEl = document.getElementById("scenarioList");
+      const visible = getFilteredScenarios();
+      if (!visible.some(s => s.id === currentScenarioId)) {
+        currentScenarioId = visible[0].id;
+      }
+
+      listEl.innerHTML = visible.map(s => {
+        const activeClass = s.id === currentScenarioId ? "active" : "";
+        const pillLabel = s.workflowStatus === "approve"
+          ? `✓ ${s.result.score}`
+          : s.workflowStatus === "review"
+            ? `⚑ ${s.result.score}`
+            : `✕ Blocked`;
+        return `
+          <button type="button" class="scenario-item ${activeClass}" data-id="${s.id}">
+            <div class="scen-top">
+              <span class="scen-cat-tag">${s.shortTag}</span>
+              <span class="mini-badge ${s.workflowStatus}">${pillLabel}</span>
+            </div>
+            <div class="scen-title">${s.title}</div>
+            <div class="scen-sub">${s.subtitle}</div>
+          </button>
+        `;
+      }).join("");
+
+      listEl.querySelectorAll(".scenario-item").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentScenarioId = btn.getAttribute("data-id");
+          renderScenarioList();
+          renderStage();
+        });
+      });
+    }
+
+    function setFieldBox(elId, val) {
+      const el = document.getElementById(elId);
+      if (val && val.trim()) {
+        el.textContent = val;
+        el.classList.remove("empty");
+      } else {
+        el.textContent = "(blank / not provided)";
+        el.classList.add("empty");
+      }
+    }
+
+    function renderStage() {
+      const scen = SCENARIOS.find(s => s.id === currentScenarioId) || SCENARIOS[0];
+      document.getElementById("stageKicker").textContent = scen.pillarLabel;
+      document.getElementById("stageTitle").textContent = scen.title;
+      document.getElementById("stageChallenge").textContent = scen.challenge;
+
+      setFieldBox("qUnit", scen.query[0]);
+      setFieldBox("qStreet", scen.query[1]);
+      setFieldBox("qTenant", scen.query[2]);
+
+      // Parsed diagnostic chips
+      const pq = scen.result.parsed_query;
+      const chips = [];
+      if (pq.units && pq.units.length) chips.push(`Extracted Unit: ${pq.units.join(", ")}`);
+      if (pq.floors && pq.floors.length) chips.push(`Extracted Floor: ${pq.floors.join(", ")}`);
+      if (pq.street_numbers && pq.street_numbers.length) chips.push(`Street #: ${pq.street_numbers.join(", ")}`);
+      if (pq.stripped_localities && pq.stripped_localities.length) {
+        chips.push(`Stripped Town/County: ${pq.stripped_localities.map(w => w[0].toUpperCase() + w.slice(1)).join(", ")}`);
+      }
+      if (pq.stripped_postcode) chips.push(`Stripped Postcode: ${pq.stripped_postcode}`);
+      document.getElementById("parsedChips").innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join("");
+
+      // Candidates
+      document.getElementById("candCountLabel").textContent = `${scen.candidates.length} EPCs in Postcode`;
+      document.getElementById("candList").innerHTML = scen.candidates.map(c => {
+        const cls = c.winner ? "winner" : c.tied ? "tied-winner" : "";
+        const badgeTxt = c.winner
+          ? `Matched • ${c.score}`
+          : c.tied
+            ? `Tied Match • ${c.score}`
+            : `Score ${c.score}`;
+        return `
+          <div class="cand-row ${cls}">
+            <div>
+              <div class="cand-id">${c.id}</div>
+              <div class="cand-addr">${c.addr.filter(Boolean).join(", ")}</div>
+              <div class="cand-note">${c.note}</div>
+            </div>
+            <span class="cand-score-pill">${badgeTxt}</span>
+          </div>
+        `;
+      }).join("");
+
+      // Comparison boxes
+      document.getElementById("naiveText").textContent = scen.naiveComparison;
+      document.getElementById("smartText").textContent = scen.smartComparison;
+
+      // Gauge & Workflow Verdict
+      const score = scen.result.score;
+      document.getElementById("scoreVal").textContent = score.toFixed(1).replace(/\.0$/, "");
+      const circumference = 175.9;
+      const offset = circumference - (Math.min(100, Math.max(0, score)) / 100) * circumference;
+      const arc = document.getElementById("gaugeArc");
+      arc.style.strokeDashoffset = String(offset);
+
+      const strokeColor = scen.workflowStatus === "approve"
+        ? "var(--emerald-solid)"
+        : scen.workflowStatus === "review"
+          ? "var(--amber-solid)"
+          : "var(--crimson-solid)";
+      arc.style.stroke = strokeColor;
+
+      const wfBadge = document.getElementById("workflowBadge");
+      wfBadge.className = `workflow-badge ${scen.workflowStatus}`;
+      wfBadge.textContent = scen.workflowLabel;
+
+      const headline = scen.result.best_match_id
+        ? scen.result.tied_ids.length > 1
+          ? `Matched Parent Building across ${scen.result.tied_ids.length} Tied EPCs (${scen.result.tied_ids.join(" & ")})`
+          : `Selected Certificate ${scen.result.best_match_id}: "${scen.result.best_match_address.join(", ")}"`
+        : "No Certificate Assigned — False-Positive Match Safely Prevented";
+      document.getElementById("verdictHeadline").textContent = headline;
+
+      // Reasons list
+      const bulletType = scen.workflowStatus === "approve" ? "ok" : scen.workflowStatus === "review" ? "warn" : "stop";
+      const bulletChar = scen.workflowStatus === "approve" ? "✓" : scen.workflowStatus === "review" ? "!" : "✕";
+      document.getElementById("auditReasons").innerHTML = scen.result.reasons.map(r => `
+        <li>
+          <span class="audit-bullet ${bulletType}">${bulletChar}</span>
+          <span>${esc(r)}</span>
+        </li>
+      `).join("");
+
+      // Component bars (only show active relevant components for clarity)
+      const cs = scen.result.component_scores;
+      document.getElementById("compBars").innerHTML = scen.activeComponents.map(key => {
+        const val = cs[key] || 0;
+        const barColor = val >= 80 ? "var(--emerald-solid)" : val >= 50 ? "var(--amber-solid)" : "var(--crimson-solid)";
+        return `
+          <div class="bar-item">
+            <div class="bar-head">
+              <span>${COMPONENT_LABELS[key]}</span>
+              <span>${val.toFixed(0)}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${val}%; background:${barColor};"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // Raw JSON output
+      document.getElementById("rawJsonBox").textContent = JSON.stringify(scen.result, null, 2);
+    }
+
+    // Pillar tabs
+    document.querySelectorAll("#pillarTabs .filter-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll("#pillarTabs .filter-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        currentFilter = tab.getAttribute("data-pillar");
+        renderScenarioList();
+        renderStage();
+      });
+    });
+
+    // Prev / Next buttons
+    document.getElementById("prevScenarioBtn").addEventListener("click", () => {
+      const visible = getFilteredScenarios();
+      const idx = visible.findIndex(s => s.id === currentScenarioId);
+      const prevIdx = (idx - 1 + visible.length) % visible.length;
+      currentScenarioId = visible[prevIdx].id;
+      renderScenarioList();
+      renderStage();
+    });
+
+    document.getElementById("nextScenarioBtn").addEventListener("click", () => {
+      const visible = getFilteredScenarios();
+      const idx = visible.findIndex(s => s.id === currentScenarioId);
+      const nextIdx = (idx + 1) % visible.length;
+      currentScenarioId = visible[nextIdx].id;
+      renderScenarioList();
+      renderStage();
+    });
+
+    // Raw JSON drawer toggle
+    document.getElementById("rawToggleBtn").addEventListener("click", () => {
+      const box = document.getElementById("rawJsonBox");
+      const arrow = document.getElementById("rawToggleArrow");
+      const isOpen = box.classList.toggle("open");
+      arrow.textContent = isOpen ? "▾" : "▸";
+    });
+
+    // Light / Dark presentation mode toggle
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      const html = document.documentElement;
+      const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", next);
+      document.getElementById("themeIcon").textContent = next === "dark" ? "☀️" : "🌙";
+      document.getElementById("themeLabel").textContent = next === "dark" ? "Light Executive Mode" : "Dark Presentation Mode";
+    });
+
+    // Initial render
+    renderScenarioList();
+    renderStage();
+  </script>
+</body>
+</html>
