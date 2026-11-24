@@ -1554,6 +1554,9 @@ class ParsedAddress:
     core_structural_tokens: set[str] = field(default_factory=set)
     all_address_tokens: set[str] = field(default_factory=set)
     normalized_full: str = ""
+    is_epc_exempt: bool = False
+    exempt_category: str | None = None
+    exempt_trigger: str | None = None
 
 
 # ============================================================================
@@ -1796,6 +1799,642 @@ def normalize_tenant_name(name: str, subtract_tokens: set[str] | None = None) ->
 
 
 # ============================================================================
+# Non-EPC / Statutory Exempt Structure Detection ('No Cert')
+# ============================================================================
+
+# Words that prove a phrase is actually naming a street or multi-let building rather than an exempt structure
+# (e.g. '10 Monument Street', '12 Church Road', 'Church House', 'Temple Chambers', 'Chapel Court')
+_STREET_OR_BLDG_FOLLOW_WORDS = (
+    r"(?:street|road|lane|avenue|way|drive|close|walk|hill|grove|place|square|terrace|row|"
+    r"mews|crescent|gardens|gate|court|house|buildings?|chambers|mansions|towers?|estate|"
+    r"centre|plaza|point|heights|wharf|quays?|parade|arcade|approach|bridge|circus|parkway|"
+    r"boulevard|highway|rise|chase|view|green|hall)\b"
+)
+
+# Tier 1: Point infrastructure, utilities, telecoms masts, street furniture, hoardings & bare-land prefixes.
+# When one of these is the primary subject of the query (not tacked on after '&'/'including' to an office/shop),
+# the asset NEVER requires an EPC, even if hosted at a building ('ATM, Unit 1, High St' or 'Substation, Units 1-4').
+_EXEMPT_INFRASTRUCTURE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Utility & Energy Infrastructure",
+        (
+            "electricity substation",
+            "electric substation",
+            "primary substation",
+            "secondary substation",
+            "distribution substation",
+            "grid substation",
+            "package substation",
+            "kiosk substation",
+            "electricity kiosk",
+            "substation",
+            "sub station",
+            "transformer chamber",
+            "transformer compound",
+            "transformer station",
+            "transformer",
+            "switchgear",
+            "hv compound",
+            "lv compound",
+            "battery energy storage",
+            "battery storage",
+            "bess compound",
+            "solar farm",
+            "solar park",
+            "solar array",
+            "pv array",
+            "wind turbine",
+            "wind farm",
+            "generator compound",
+            "standby generator",
+            "electric vehicle charging",
+            "ev charging",
+            "ev charger",
+            "charging station",
+            "charging point",
+            "charging bays",
+            "charging bay",
+            "gas governor",
+            "pressure reduction station",
+            "gas compound",
+            "gas kiosk",
+            "gas holder",
+            "gasholder",
+            "gas valve compound",
+            "offtake station",
+            "sewage pumping station",
+            "water pumping station",
+            "pumping station",
+            "pump station",
+            "sewage treatment",
+            "sewage works",
+            "wastewater treatment",
+            "water tower",
+            "service reservoir",
+            "borehole",
+            "attenuation pond",
+            "balancing pond",
+            "outfall",
+            "weir",
+            "sluice",
+        ),
+    ),
+    (
+        "Telecoms & Broadcast Infrastructure",
+        (
+            "telephone mast",
+            "telecoms mast",
+            "telecom mast",
+            "telecommunications mast",
+            "communications mast",
+            "radio mast",
+            "mobile mast",
+            "phone mast",
+            "lattice mast",
+            "monopole",
+            "mast site",
+            "aerial mast",
+            "transmitter mast",
+            "broadcast mast",
+            "telecoms site",
+            "telecom site",
+            "telecommunications site",
+            "telecoms compound",
+            "telecom compound",
+            "telecoms apparatus",
+            "telecoms equipment",
+            "telecoms cabin",
+            "telecoms cabinet",
+            "equipment cabin",
+            "cell site",
+            "base station",
+            "macrocell",
+            "small cell",
+            "rooftop telecoms",
+            "rooftop mast",
+            "rooftop aerial",
+            "rooftop antenna",
+            "antenna site",
+            "aerial site",
+            "repeater station",
+            "fibre cabinet",
+            "broadband cabinet",
+            "street cabinet",
+            "pcp cabinet",
+            "telephone kiosk",
+            "telephone box",
+            "public phone box",
+            "phone box",
+            "payphone",
+        ),
+    ),
+    (
+        "Street Furniture, Shelters & ATMs",
+        (
+            "bus shelter",
+            "bus stop",
+            "tram shelter",
+            "tram stop",
+            "waiting shelter",
+            "passenger shelter",
+            "smoking shelter",
+            "atm site",
+            "automated teller",
+            "cash machine",
+            "hole in the wall",
+            "atm",
+            "inpost locker",
+            "amazon locker",
+            "parcel locker",
+            "locker bank",
+            "vending machine",
+            "pillar box",
+            "post box",
+            "pay and display",
+            "ticket machine",
+            "parking meter",
+            "public weighbridge",
+            "weighbridge",
+        ),
+    ),
+    (
+        "Advertising Hoarding & Signage",
+        (
+            "advertising hoarding",
+            "ad hoarding",
+            "hoarding site",
+            "hoarding at",
+            "hoardings",
+            "hoarding",
+            "digital billboard",
+            "billboard",
+            "advertising station",
+            "advertising rights",
+            "advertising right",
+            "advertising panel",
+            "advertising screen",
+            "led screen",
+            "digital screen",
+            "poster panel",
+            "poster station",
+            "totem sign",
+            "gantry sign",
+        ),
+    ),
+    (
+        "Land, Open Space & Easements",
+        (
+            "land adjacent",
+            "land adj",
+            "land at",
+            "land rear",
+            "land rear_of",
+            "land on",
+            "land off",
+            "land north",
+            "land south",
+            "land east",
+            "land west",
+            "land fronting",
+            "land opposite",
+            "land forming",
+            "plot of land",
+            "strip of land",
+            "piece of land",
+            "parcel of land",
+            "area of land",
+            "grazing land",
+            "agricultural land",
+            "arable land",
+            "pasture land",
+            "amenity land",
+            "public open space",
+            "open storage land",
+            "open storage yard",
+            "open storage",
+            "storage land",
+            "hardstanding",
+            "grass verge",
+            "highway verge",
+            "allotments",
+            "allotment",
+            "woodland",
+            "forestry",
+            "paddock",
+            "playing field",
+            "recreation ground",
+            "wayleave",
+            "easement",
+            "right of way",
+            "bridleway",
+            "airspace",
+            "subsoil",
+            "moorings",
+            "mooring",
+            "pontoon",
+            "jetty",
+            "slipway",
+            "fishing rights",
+            "shooting rights",
+            "mineral rights",
+        ),
+    ),
+)
+
+# Tier 2: Parking, Garages & Ancillary Compounds (exempt when NOT bundled as an accessory to an
+# explicit conditioned building demise like '2nd Floor Offices & 4 Car Spaces').
+_EXEMPT_PARKING_AND_ANCILLARY_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Parking & Vehicular Space",
+        (
+            "multi storey car park",
+            "mscp",
+            "surface car park",
+            "underground car park",
+            "basement car park",
+            "decked car park",
+            "car parking spaces",
+            "car parking space",
+            "car parking",
+            "car park",
+            "carpark",
+            "park and ride",
+            "lorry park",
+            "hgv park",
+            "coach park",
+            "parking spaces",
+            "parking space",
+            "parking bays",
+            "parking bay",
+            "car spaces",
+            "car space",
+            "parking lot",
+            "parking area",
+            "parking compound",
+            "parking deck",
+            "lock up garages",
+            "lock up garage",
+            "lockup garage",
+            "garage block",
+            "battery of garages",
+            "domestic garage",
+            "single garage",
+            "double garage",
+            "en bloc garage",
+            "cycle shelter",
+            "cycle store",
+            "cycle parking",
+            "bike store",
+            "bike shed",
+            "trolley bay",
+            "electric vehicle charging",
+            "ev charging",
+            "ev charger",
+            "charging station",
+            "charging point",
+            "charging bays",
+            "charging bay",
+        ),
+    ),
+    (
+        "Ancillary Unconditioned Compound / Store",
+        (
+            "bin store",
+            "refuse store",
+            "skip compound",
+            "plant compound",
+            "storage compound",
+        ),
+    ),
+)
+
+# Tier 3: Statutory Exempt Buildings under EPB Regulations 2012 (Places of Worship, Temporary/Portable,
+# Low-Energy Agricultural Barns, Derelict/Demolished, Monuments) — only exempt when there is NO residential
+# or commercial conversion indicator ('Flat 2, The Old Chapel' or 'Suite 1, Church House' ARE conditioned!).
+_EXEMPT_STATUTORY_BUILDING_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Statutory Exempt — Place of Worship / Cemetery",
+        (
+            "place of worship",
+            "parish church",
+            "methodist church",
+            "baptist church",
+            "catholic church",
+            "united reformed church",
+            "evangelical church",
+            "kingdom hall",
+            "chapel of rest",
+            "mosque",
+            "masjid",
+            "synagogue",
+            "gurdwara",
+            "mandir",
+            "hindu temple",
+            "buddhist temple",
+            "crematorium",
+            "cemetery",
+            "burial ground",
+            "graveyard",
+            "church",
+            "chapel",
+            "temple",
+        ),
+    ),
+    (
+        "Statutory Exempt — Temporary, Portable or Container Structure",
+        (
+            "portakabin",
+            "porta cabin",
+            "portable cabin",
+            "site cabin",
+            "site hut",
+            "welfare cabin",
+            "welfare unit",
+            "jackleg cabin",
+            "shipping container",
+            "storage container",
+            "sea container",
+            "iso container",
+            "container store",
+            "polytunnel",
+            "marquee",
+        ),
+    ),
+    (
+        "Statutory Exempt — Agricultural / Low-Energy / Unconditioned Structure",
+        (
+            "agricultural barn",
+            "hay barn",
+            "dutch barn",
+            "straw barn",
+            "grain store",
+            "silage clamp",
+            "slurry store",
+            "livestock shed",
+            "cattle shed",
+            "sheep shed",
+            "poultry shed",
+            "tractor shed",
+            "beach hut",
+            "bandstand",
+            "war memorial",
+            "monument",
+            "derelict building",
+            "derelict land",
+            "demolished",
+            "cleared site",
+            "site of former",
+        ),
+    ),
+)
+
+_CONDITIONED_PRIMARY_WORDS = frozenset(
+    {
+        "office",
+        "offices",
+        "suite",
+        "suites",
+        "flat",
+        "flats",
+        "apartment",
+        "apartments",
+        "maisonette",
+        "studio",
+        "shop",
+        "shops",
+        "retail",
+        "supermarket",
+        "store",  # handled carefully (not 'bin store' / 'grain store' / 'cycle store')
+        "warehouse",
+        "workshop",
+        "factory",
+        "restaurant",
+        "cafe",
+        "pub",
+        "public house",
+        "hotel",
+        "clinic",
+        "surgery",
+        "dental",
+        "pharmacy",
+        "nursery",
+        "school",
+        "college",
+        "gym",
+        "leisure centre",
+        "cinema",
+        "showroom",
+    }
+)
+
+_MOTOR_TRADE_WORDS = frozenset(
+    {
+        "motor",
+        "motors",
+        "mot",
+        "tyre",
+        "tyres",
+        "exhaust",
+        "exhausts",
+        "kwik fit",
+        "halfords",
+        "ats euromaster",
+        "national tyres",
+        "service station",
+        "petrol",
+        "filling station",
+        "forecourt",
+        "bodyshop",
+        "body shop",
+        "coachworks",
+        "accident repair",
+        "vehicle repair",
+        "car sales",
+        "dealership",
+        "showroom",
+    }
+)
+
+# Dedicated non-EPC operators (used ONLY when the address itself describes a generic non-building
+# site/rooftop/compound/apparatus rather than a conditioned shop/office unit)
+_NON_EPC_INFRA_TENANT_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("Utility & Energy Infrastructure", r"\b(?:uk power networks|ukpn|western power distribution|national grid electricity distribution|northern powergrid|sp energy networks|ssen|scottish and southern electricity|electricity north west|cadent gas|northern gas networks|wales and west utilities|sgn|southern gas networks)\b"),
+    ("Telecoms & Broadcast Infrastructure", r"\b(?:cornerstone telecommunications|ctil|mobile broadband network|mbnl|cellnex|arqiva|wireless infrastructure group|freshwave)\b"),
+    ("Advertising Hoarding & Signage", r"\b(?:jcdecaux|clear channel|ocean outdoor|global outdoor|primesight)\b"),
+    ("Street Furniture, Shelters & ATMs", r"\b(?:inpost|notemachine|cardtronics|yourcash)\b"),
+)
+
+
+def detect_epc_exemption(
+    address_lines: Sequence[Any],
+    explicit_tenant: Any = None,
+) -> tuple[bool, str | None, str | None]:
+    """
+    Identify UK portfolio structures/demises that do not require an EPC certificate
+    (car parks, substations, telephone masts, bus shelters, ATMs, advertising hoardings,
+    bare land/easements, places of worship, temporary cabins, agricultural barns, etc.).
+
+    Includes strict false-positive guards so street names ('12 Church Street', '10 Monument St'),
+    office/flat conversions ('Flat 2, The Old Chapel', 'Suite 1, Church House'), retail phone
+    shops ('Unit 4, High St' + 'Vodafone'), motor-trade workshops ('Kwik Fit Garage'), and
+    leases with ancillary parking ('2nd Floor Office & 4 Car Spaces') are NEVER misclassified.
+
+    Returns
+    -------
+    tuple[bool, str | None, str | None]
+        `(is_exempt, exempt_category, matched_trigger)`
+    """
+    clean_lines = [_clean_input_value(x) for x in address_lines]
+    non_empty = [x for x in clean_lines if x]
+    tenant_clean = _clean_input_value(explicit_tenant)
+
+    if not non_empty:
+        return (False, None, None)
+
+    raw_joined = ", ".join(non_empty)
+    # Strip UK postcodes before checking patterns
+    no_pc = UK_POSTCODE_RE.sub(" ", raw_joined)
+
+    # 1. Remove explicit ancillary inclusions ('inc 4 car spaces', 'including parking & yard',
+    #    'together with 2 parking bays', 'with car parking') so primary building leases stay intact!
+    ancillary_inc_re = re.compile(
+        r"\((?:inc\.?|including|with|together\s+with|plus)\b[^)]*\)"
+        r"|\b(?:inc\.?|including|together\s+with)\s+[^,;]+",
+        re.IGNORECASE,
+    )
+    stripped_inc = ancillary_inc_re.sub(" ", no_pc)
+
+    # Split into ordered clauses across lines and commas/semicolons
+    raw_clauses = [c.strip() for c in re.split(r"[,;]+", stripped_inc) if c.strip()]
+    norm_clauses: list[str] = []
+    for rc in raw_clauses:
+        s = _normalize_apostrophes_and_symbols(rc.lower())
+        s = s.replace("-", " ")
+        s = re.sub(r"[^\w\s]", " ", s)
+        s = _disambiguate_st_and_abbrevs(s)
+        s = re.sub(r"\s+", " ", s).strip()
+        if s:
+            norm_clauses.append(s)
+
+    if not norm_clauses:
+        return (False, None, None)
+
+    full_norm = " , ".join(norm_clauses)
+    tenant_norm = re.sub(r"[^\w\s]", " ", _normalize_apostrophes_and_symbols(tenant_clean.lower()).replace("-", " "))
+    tenant_norm = re.sub(r"\s+", " ", tenant_norm).strip()
+
+    # Helper: check if the FIRST / primary demise before 'and' is already a conditioned building
+    # (e.g. '2nd floor offices and 6 car parking spaces', 'shop and atm', 'unit 4 and yard')
+    first_clause = norm_clauses[0]
+    lead_before_and = first_clause.split(" and ")[0].strip()
+
+    def _has_conditioned_demise(text_seg: str) -> bool:
+        # Strip estate/park phrases ('retail park', 'office park', 'shopping centre', 'business park')
+        # so location names never masquerade as conditioned unit demises!
+        cleaned_seg = text_seg
+        for ep in ESTATE_PARK_PHRASES:
+            cleaned_seg = cleaned_seg.replace(ep, " ")
+        # Remove non-conditioned compound '* store' phrases before checking 'store'
+        cleaned_seg = re.sub(
+            r"\b(?:bin|refuse|cycle|bike|grain|slurry|container|cold)\s+store\b",
+            " ",
+            cleaned_seg,
+        )
+        for cw in _CONDITIONED_PRIMARY_WORDS:
+            if cw in {"store", "retail"}:
+                continue
+            if re.search(rf"\b{re.escape(cw)}\b", cleaned_seg):
+                return True
+        if re.search(r"\bretail\s+(?:units?|shops?|stores?|warehouses?|premises)\b", cleaned_seg):
+            return True
+        return False
+
+    lead_is_conditioned = _has_conditioned_demise(lead_before_and) or bool(
+        re.match(r"^(?:units?|plots?)\s+\d", lead_before_and)
+        and " and " in first_clause
+        and not any(
+            k in lead_before_and
+            for k in ("substation", "mast", "car park", "parking", "atm", "hoarding", "shelter", "transformer")
+        )
+    )
+
+    def _match_phrase_safely(clause_text: str, phrase: str) -> bool:
+        # Match whole words, and ensure the matched phrase is NOT immediately followed by a
+        # street thoroughfare or multi-let building suffix (protects '10 Monument Street',
+        # '12 Church Road', 'Church House', 'Temple Chambers', '4 Mooring Way', 'Car Park Road')!
+        pat = rf"\b{re.escape(phrase)}\b(?!\s+{_STREET_OR_BLDG_FOLLOW_WORDS})"
+        return bool(re.search(pat, clause_text))
+
+    # ------------------------------------------------------------------
+    # Check Tier 1: Point Infrastructure, Utilities, Telecoms, Shelters, Hoardings & Land
+    # ------------------------------------------------------------------
+    # Evaluate on primary clauses (not trailing 'and <exempt>' attached to a conditioned office/shop)
+    clauses_for_tier1 = [lead_before_and] + norm_clauses[1:] if lead_is_conditioned else norm_clauses
+    for idx_c, cl in enumerate(clauses_for_tier1):
+        if lead_is_conditioned and idx_c == 0:
+            continue
+        for category, phrases in _EXEMPT_INFRASTRUCTURE_RULES:
+            for ph in phrases:
+                # Extra guard for 'land ...': only trigger if 'land ...' is at the start of the clause
+                if ph.startswith("land ") and not cl.startswith(ph):
+                    continue
+                if _match_phrase_safely(cl, ph):
+                    # Guard against 'Substation Road' or 'Station' false hits (already handled by phrase + lookahead)
+                    return (True, category, ph)
+
+    # ------------------------------------------------------------------
+    # Check Tier 2: Parking, Lock-Up Garages & Unconditioned Compounds
+    # ------------------------------------------------------------------
+    any_conditioned_anywhere = any(_has_conditioned_demise(c.split(" and ")[0]) for c in norm_clauses)
+    if not lead_is_conditioned and not any_conditioned_anywhere:
+        for cl in norm_clauses:
+            for category, phrases in _EXEMPT_PARKING_AND_ANCILLARY_RULES:
+                for ph in phrases:
+                    if _match_phrase_safely(cl, ph):
+                        return (True, category, ph)
+
+            # Standalone 'garage' / 'garages' (e.g. 'Garage 4', 'Garages 1-6', 'Garage rear of 10 High St')
+            # Guard against commercial motor-trade workshops/showrooms/petrol stations!
+            if re.search(rf"\bgarages?\b(?!\s+{_STREET_OR_BLDG_FOLLOW_WORDS})", cl):
+                combined_check = f"{full_norm} {tenant_norm}"
+                if not any(mw in combined_check for mw in _MOTOR_TRADE_WORDS):
+                    return (True, "Parking & Vehicular Space", "garage")
+
+    # ------------------------------------------------------------------
+    # Check Tier 3: Statutory Exempt Buildings (Worship, Cabins, Containers, Agricultural, Derelict)
+    # ------------------------------------------------------------------
+    has_conversion_clue = bool(
+        re.search(r"\b(?:old|former|converted|conversion|apartments?|flats?|suites?|offices?|shops?|studios?)\b", full_norm)
+    )
+    if not lead_is_conditioned and not any_conditioned_anywhere and not has_conversion_clue:
+        for cl in norm_clauses:
+            for category, phrases in _EXEMPT_STATUTORY_BUILDING_RULES:
+                for ph in phrases:
+                    if _match_phrase_safely(cl, ph):
+                        return (True, category, ph)
+
+    # ------------------------------------------------------------------
+    # Check Tier 4: Generic Non-Building Site/Rooftop/Compound + Dedicated Infra Operator Tenant
+    # (e.g. ['Rooftop Site', 'Apex House', 'Cornerstone Telecommunications Infrastructure Ltd']
+    #  or ['Site 04', 'High Street', 'JCDecaux UK Ltd'] — while NEVER flagging ['Unit 4', 'High St', 'Vodafone'])
+    # ------------------------------------------------------------------
+    if tenant_norm and not lead_is_conditioned and not any_conditioned_anywhere:
+        has_generic_infra_locus = bool(
+            re.search(
+                r"\b(?:rooftop|roof\s+space|roof\s+site|compound|apparatus|installation|cabinet|kiosk|site|panel|shelter|locker|chamber|governor)\b",
+                first_clause,
+            )
+        ) and not re.search(r"\b(?:units?|shops?|offices?|suites?|flats?|apartments?|floors?)\b", first_clause)
+        if has_generic_infra_locus:
+            for category, ten_pat in _NON_EPC_INFRA_TENANT_PATTERNS:
+                m_ten = re.search(ten_pat, tenant_norm)
+                if m_ten:
+                    return (True, category, f"{first_clause} ({m_ten.group(0)})")
+
+    return (False, None, None)
+
+
+# ============================================================================
 # Floor & Sub-Unit Clause Parsers
 # ============================================================================
 
@@ -1893,7 +2532,7 @@ _DESIGNATOR_KEYS = "|".join(sorted(UNIT_CATEGORY_BY_DESIGNATOR.keys(), key=len, 
 
 # Designator + ID (e.g., 'Units 1-4', 'Unit 4B', 'Flat 2', 'Suite A', 'Units 1, 2 and 3', 'Block C')
 _UNIT_WITH_ID_RE = re.compile(
-    rf"\b({_DESIGNATOR_KEYS})\s*(?:no\.?|number|#)?\s*"
+    rf"\b({_DESIGNATOR_KEYS})(?:\s+(?:no\.?|number|#)\s*|\s*#\s*|\s+)"
     r"((?:\d{1,4}[a-z]?|[a-z]\d{0,3}|one|two|three|four|five|six|seven|eight|nine|ten)"
     r"(?:\s*(?:-|to|/|and|,)\s*(?:\d{1,4}[a-z]?|[a-z]\d{0,3}))*)\b"
 )
@@ -2033,8 +2672,14 @@ def parse_address_record(
     for line_idx, line in enumerate(clean_lines):
         if not line:
             continue
-        # Remove UK postcodes
+        # Remove UK postcodes and ancillary '(including ...)' / '(inc ...)' clauses
         line_wo_pc = UK_POSTCODE_RE.sub(" ", line)
+        line_wo_pc = re.sub(
+            r"\((?:inc\.?|including|together\s+with)\b[^)]*\)",
+            " ",
+            line_wo_pc,
+            flags=re.IGNORECASE,
+        )
 
         # Extract parenthetical remarks into separate sub-clauses rather than losing or merging them
         paren_items = re.findall(r"\(([^)]+)\)", line_wo_pc)
@@ -2269,6 +2914,13 @@ def parse_address_record(
     clean_tenant = _clean_input_value(explicit_tenant)
     if clean_tenant:
         parsed.explicit_tenant = clean_tenant
+
+    # Detect non-EPC / statutory exempt structures on query records
+    if is_query:
+        is_ex, ex_cat, ex_trig = detect_epc_exemption(address_lines, explicit_tenant=explicit_tenant)
+        parsed.is_epc_exempt = is_ex
+        parsed.exempt_category = ex_cat
+        parsed.exempt_trigger = ex_trig
 
     # Build canonical token sets (normalizing number words like 'two' -> '2' for token equivalence)
     struct_parts: list[str] = []
@@ -3253,6 +3905,7 @@ class AddressMatcher:
         *,
         min_score: float = 40.0,
         top_k_alternatives: int = 3,
+        check_exempt: bool = True,
         force_pure_sim: bool = False,
     ) -> dict[str, Any]:
         """Match `[Unit Name, Street Address, Tenant Name]` against the candidate pool."""
@@ -3276,6 +3929,44 @@ class AddressMatcher:
             town_hint=self.town_hint,
         )
 
+        parsed_query_dict = {
+            "normalized": parsed_query.normalized_full,
+            "units": [_format_unit_spec([u]) for u in parsed_query.units],
+            "floors": sorted(_floor_label(f) for f in parsed_query.floors),
+            "street_numbers": [n.raw for n in parsed_query.street_numbers],
+            "thoroughfares": parsed_query.thoroughfares,
+            "estates": parsed_query.estates,
+            "buildings": parsed_query.buildings,
+            "stripped_localities": parsed_query.localities,
+            "stripped_postcode": parsed_query.postcode,
+            "tenant": parsed_query.explicit_tenant,
+            "is_epc_exempt": parsed_query.is_epc_exempt,
+            "exempt_category": parsed_query.exempt_category,
+        }
+
+        if check_exempt and parsed_query.is_epc_exempt:
+            return {
+                "best_match_id": None,
+                "best_match_address": None,
+                "score": 0.0,
+                "match_tier": "No Cert",
+                "reasons": [
+                    f"Non-EPC / exempt structure detected ({parsed_query.exempt_category}: matched '{parsed_query.exempt_trigger}') "
+                    "— property type does not require an EPC certificate"
+                ],
+                "component_scores": {
+                    "unit": 0.0,
+                    "floor": 0.0,
+                    "street_number": 0.0,
+                    "thoroughfare": 0.0,
+                    "estate_or_building": 0.0,
+                    "tenant": 0.0,
+                },
+                "tied_ids": [],
+                "alternatives": [],
+                "parsed_query": parsed_query_dict,
+            }
+
         if not self._parsed_candidates:
             return {
                 "best_match_id": None,
@@ -3293,18 +3984,7 @@ class AddressMatcher:
                 },
                 "tied_ids": [],
                 "alternatives": [],
-                "parsed_query": {
-                    "normalized": parsed_query.normalized_full,
-                    "units": [_format_unit_spec([u]) for u in parsed_query.units],
-                    "floors": sorted(_floor_label(f) for f in parsed_query.floors),
-                    "street_numbers": [n.raw for n in parsed_query.street_numbers],
-                    "thoroughfares": parsed_query.thoroughfares,
-                    "estates": parsed_query.estates,
-                    "buildings": parsed_query.buildings,
-                    "stripped_localities": parsed_query.localities,
-                    "stripped_postcode": parsed_query.postcode,
-                    "tenant": parsed_query.explicit_tenant,
-                },
+                "parsed_query": parsed_query_dict,
             }
 
         scored_items: list[dict[str, Any]] = []
@@ -3382,18 +4062,7 @@ class AddressMatcher:
             "component_scores": winner["component_scores"],
             "tied_ids": tied_ids,
             "alternatives": runner_ups,
-            "parsed_query": {
-                "normalized": parsed_query.normalized_full,
-                "units": [_format_unit_spec([u]) for u in parsed_query.units],
-                "floors": sorted(_floor_label(f) for f in parsed_query.floors),
-                "street_numbers": [n.raw for n in parsed_query.street_numbers],
-                "thoroughfares": parsed_query.thoroughfares,
-                "estates": parsed_query.estates,
-                "buildings": parsed_query.buildings,
-                "stripped_localities": parsed_query.localities,
-                "stripped_postcode": parsed_query.postcode,
-                "tenant": parsed_query.explicit_tenant,
-            },
+            "parsed_query": parsed_query_dict,
         }
 
 
@@ -3404,9 +4073,10 @@ def match_address(
     min_score: float = 40.0,
     top_k_alternatives: int = 3,
     town_hint: str | None = None,
+    check_exempt: bool = True,
 ) -> dict[str, Any]:
     """
-    Find the best matching EPC candidate (or No Match) for a messy UK property query.
+    Find the best matching EPC candidate (or No Match / No Cert) for a messy UK property query.
 
     Parameters
     ----------
@@ -3422,16 +4092,20 @@ def match_address(
     town_hint : str | None, default None
         Optional post-town name (if not already in the built-in UK towns dictionary) to
         strip harmlessly if it bleeds into `Unit Name` or `Street Address`.
+    check_exempt : bool, default True
+        When True, automatically isolates structures that do not require an EPC certificate
+        (car parks, substations, telephone masts, bus shelters, ATMs, hoardings, bare land,
+        places of worship, temporary cabins, etc.) and returns `match_tier='No Cert'`, `score=0.0`.
 
     Returns
     -------
     dict[str, Any]
-        Plain dictionary suitable for JSON or `pd.Series` / `pd.DataFrame` unpacking:
+        Plain dictionary suitable for JSON or `pd.Series` / `pd.DataFrame` / Polars unpacking:
         - `best_match_id`: winning candidate key or `None`
         - `best_match_address`: winning candidate's cleaned address lines or `None`
         - `score`: float in `[0.0, 100.0]`
-        - `match_tier`: `'Exact' | 'High' | 'Medium' | 'Low' | 'No Match'`
-        - `reasons`: list of human-readable explanations for the match/rejection
+        - `match_tier`: `'Exact' | 'High' | 'Medium' | 'Low' | 'No Match' | 'No Cert'`
+        - `reasons`: list of human-readable explanations for the match/rejection/exemption
         - `component_scores`: per-component breakdown (`unit`, `floor`, `street_number`,
           `thoroughfare`, `estate_or_building`, `tenant`)
         - `tied_ids`: list of all candidate IDs tied for the winning score
@@ -3443,4 +4117,5 @@ def match_address(
         query,
         min_score=min_score,
         top_k_alternatives=top_k_alternatives,
+        check_exempt=check_exempt,
     )
